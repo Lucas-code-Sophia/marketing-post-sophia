@@ -5,6 +5,7 @@ import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Grid } from 'lucid
 import { Button } from '@/components/ui/button'
 import { CalendarMonth } from './CalendarMonth'
 import { CalendarWeek } from './CalendarWeek'
+import { PostPreviewModal } from '@/components/posts/PostPreviewModal'
 import { useCalendar, type CalendarView as ViewType } from '@/hooks/useCalendar'
 import {
   getNextMonth,
@@ -17,6 +18,7 @@ import {
   endOfWeek,
 } from '@/lib/calendar/utils'
 import { fr } from 'date-fns/locale'
+import type { Post } from '@/types'
 
 interface CalendarViewProps {
   initialView?: ViewType
@@ -32,6 +34,14 @@ export function CalendarView({ initialView = 'month' }: CalendarViewProps) {
     loading,
     error,
   } = useCalendar({ initialView, initialDate: new Date() })
+
+  const [selectedPost, setSelectedPost] = useState<Post | null>(null)
+  const [isModalOpen, setIsModalOpen] = useState(false)
+
+  const handlePostClick = (post: Post) => {
+    setSelectedPost(post)
+    setIsModalOpen(true)
+  }
 
   const handlePrevious = () => {
     if (view === 'month') {
@@ -121,10 +131,18 @@ export function CalendarView({ initialView = 'month' }: CalendarViewProps) {
 
       {/* Calendrier */}
       {view === 'month' ? (
-        <CalendarMonth date={currentDate} posts={posts} />
+        <CalendarMonth date={currentDate} posts={posts} onPostClick={handlePostClick} />
       ) : (
-        <CalendarWeek date={currentDate} posts={posts} />
+        <CalendarWeek date={currentDate} posts={posts} onPostClick={handlePostClick} />
       )}
+
+      {/* Modal d'aperçu */}
+      <PostPreviewModal
+        post={selectedPost}
+        open={isModalOpen}
+        onOpenChange={setIsModalOpen}
+        canEdit={true}
+      />
     </div>
   )
 }

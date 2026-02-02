@@ -85,7 +85,7 @@ Ouvrir [http://localhost:3000](http://localhost:3000)
 1. **User** crée un post → status = `pending_validation`
 2. **Manager** valide → status = `scheduled` avec date de publication
 3. **Manager** rejette → status = `rejected` avec raison
-4. **n8n Scheduler** publie automatiquement quand `scheduled_at <= NOW()`
+4. **n8n Scheduler** publie automatiquement quand `scheduled_at <= NOW()` (créneaux : heures pleines de 10h à 22h uniquement)
 
 Les **Manager** et **Admin** peuvent créer des posts directement en status `scheduled`.
 
@@ -93,9 +93,11 @@ Les **Manager** et **Admin** peuvent créer des posts directement en status `sch
 
 Pour que les posts programmés soient publiés automatiquement, vous devez configurer un workflow n8n :
 
+Les posts ne peuvent être programmés qu'à des **heures pleines** (10h, 11h, …, 22h). Le workflow n8n peut donc tourner **toutes les 2 heures** pour limiter les itérations.
+
 1. **Créer un nouveau workflow n8n**
 2. **Ajouter un nœud "Schedule Trigger"** :
-   - Intervalle : Toutes les 1-5 minutes (recommandé : 1 minute)
+   - Intervalle : **Toutes les 2 heures** (ex. 10h, 12h, 14h, 16h, 18h, 20h, 22h)
 3. **Ajouter un nœud "HTTP Request"** :
    - Method : `POST`
    - URL : `https://votre-domaine.com/api/posts/check-scheduled`
@@ -108,6 +110,8 @@ L'endpoint `/api/posts/check-scheduled` va :
 - Chercher tous les posts avec `status = 'scheduled'` et `scheduled_at <= maintenant`
 - Publier automatiquement chaque post trouvé
 - Retourner un résumé des publications réussies et échouées
+
+Les posts ne peuvent être programmés qu'aux **heures pleines entre 10h et 22h** ; le workflow n8n peut donc s'exécuter toutes les 2 heures sans rater de créneau.
 
 **Test de l'endpoint** : Vous pouvez tester avec une requête GET (même headers) pour voir quels posts seraient publiés sans les publier réellement.
 

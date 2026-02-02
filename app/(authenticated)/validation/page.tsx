@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Check, X, Loader2 } from 'lucide-react'
 import { formatDate, getPlatformIcon } from '@/lib/utils'
+import { SchedulePicker } from '@/components/posts/SchedulePicker'
 import type { Post } from '@/types'
 
 export default function ValidationPage() {
@@ -48,7 +49,7 @@ export default function ValidationPage() {
       .from('posts')
       .update({
         status: 'scheduled',
-        scheduled_at: scheduledAt,
+        scheduled_at: new Date(scheduledAt).toISOString(),
         validated_by: user?.id,
         validated_at: new Date().toISOString(),
       })
@@ -155,11 +156,11 @@ export default function ValidationPage() {
                 {/* Scheduling modal */}
                 {schedulingPost === post.id && (
                   <div className="p-4 border rounded-lg bg-blue-50 space-y-3">
-                    <Label>Date et heure de publication</Label>
-                    <Input
-                      type="datetime-local"
+                    <SchedulePicker
+                      label="Date et heure de publication"
                       value={scheduledAt}
-                      onChange={(e) => setScheduledAt(e.target.value)}
+                      onChange={setScheduledAt}
+                      hint="Créneaux : 10h, 12h, 14h, 16h, 18h, 20h, 22h."
                     />
                     <div className="flex gap-2">
                       <Button

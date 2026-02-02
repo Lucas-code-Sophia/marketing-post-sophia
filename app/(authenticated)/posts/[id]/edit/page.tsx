@@ -10,6 +10,8 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { ArrowLeft, Upload, X, Loader2 } from 'lucide-react'
 import Link from 'next/link'
+import { SchedulePicker } from '@/components/posts/SchedulePicker'
+import { parseScheduleValue, buildScheduleValue } from '@/lib/schedule'
 import type { SocialAccount, PlatformType, PostType, MediaItem, Post } from '@/types'
 
 const POST_TYPES: Record<PlatformType, PostType[]> = {
@@ -108,15 +110,10 @@ export default function EditPostPage() {
       setSocialAccountId(postData.social_account_id || '')
       setMedias(postData.medias || [])
       
-      // Formater la date pour datetime-local
+      // Créneau : heures pleines 10h–22h
       if (postData.scheduled_at) {
-        const date = new Date(postData.scheduled_at)
-        const year = date.getFullYear()
-        const month = String(date.getMonth() + 1).padStart(2, '0')
-        const day = String(date.getDate()).padStart(2, '0')
-        const hours = String(date.getHours()).padStart(2, '0')
-        const minutes = String(date.getMinutes()).padStart(2, '0')
-        setScheduledAt(`${year}-${month}-${day}T${hours}:${minutes}`)
+        const parsed = parseScheduleValue(postData.scheduled_at)
+        if (parsed) setScheduledAt(buildScheduleValue(parsed.date, parsed.hour))
       }
     } catch (err: any) {
       setError(err.message || 'Erreur lors du chargement')
@@ -224,7 +221,7 @@ export default function EditPostPage() {
           link: postType === 'link' ? link : null,
           medias,
           status: newStatus,
-          scheduled_at: scheduledAt || null,
+          scheduled_at: scheduledAt ? new Date(scheduledAt).toISOString() : null,
           social_account_id: socialAccountId || null,
           updated_at: new Date().toISOString(),
         })
@@ -465,19 +462,12 @@ export default function EditPostPage() {
             )}
 
             {/* Schedule */}
-            <div className="space-y-2">
-              <Label htmlFor="scheduledAt">Programmer (optionnel)</Label>
-              <Input
-                id="scheduledAt"
-                type="datetime-local"
-                value={scheduledAt}
-                onChange={(e) => setScheduledAt(e.target.value)}
-                disabled={loading}
-              />
-              <p className="text-xs text-muted-foreground">
-                Laissez vide pour enregistrer en brouillon
-              </p>
-            </div>
+            <SchedulePicker
+              value={scheduledAt}
+              onChange={setScheduledAt}
+              disabled={loading}
+              hint="Créneaux : 10h, 12h, 14h, 16h, 18h, 20h, 22h. Laissez vide pour brouillon."
+            />
 
             {/* Submit */}
             <div className="flex gap-4">

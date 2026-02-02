@@ -23,11 +23,7 @@ export function useCalendar(options: UseCalendarOptions = {}) {
 
   const supabase = createClient()
 
-  useEffect(() => {
-    fetchPosts()
-  }, [currentDate, view])
-
-  async function fetchPosts() {
+  const fetchPosts = async () => {
     setLoading(true)
     setError(null)
 
@@ -71,6 +67,10 @@ export function useCalendar(options: UseCalendarOptions = {}) {
       setLoading(false)
     }
   }
+
+  useEffect(() => {
+    fetchPosts()
+  }, [currentDate, view])
 
   // Filtrer les posts selon la vue
   const filteredPosts = view === 'month' 

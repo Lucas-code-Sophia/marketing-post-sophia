@@ -10,6 +10,7 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { ArrowLeft, Upload, X, Loader2 } from 'lucide-react'
 import Link from 'next/link'
+import { SchedulePicker } from '@/components/posts/SchedulePicker'
 import type { SocialAccount, PlatformType, PostType, MediaItem } from '@/types'
 
 const POST_TYPES: Record<PlatformType, PostType[]> = {
@@ -128,7 +129,7 @@ export default function NewPostPage() {
         link: postType === 'link' ? link : null,
         medias,
         status,
-        scheduled_at: scheduledAt || null,
+        scheduled_at: scheduledAt ? new Date(scheduledAt).toISOString() : null,
         social_account_id: socialAccountId || null,
         created_by: user.id,
       })
@@ -330,18 +331,11 @@ export default function NewPostPage() {
             )}
 
             {/* Schedule */}
-            <div className="space-y-2">
-              <Label htmlFor="scheduledAt">Programmer (optionnel)</Label>
-              <Input
-                id="scheduledAt"
-                type="datetime-local"
-                value={scheduledAt}
-                onChange={(e) => setScheduledAt(e.target.value)}
-              />
-              <p className="text-xs text-muted-foreground">
-                Laissez vide pour enregistrer en brouillon
-              </p>
-            </div>
+            <SchedulePicker
+              value={scheduledAt}
+              onChange={setScheduledAt}
+              hint="Créneaux : 10h, 12h, 14h, 16h, 18h, 20h, 22h. Laissez vide pour brouillon."
+            />
 
             {/* Submit */}
             <div className="flex gap-4">
