@@ -1,0 +1,1874 @@
+{
+  "nodes": [
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://graph.facebook.com/v21.0/17841478833954773/media",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "image_url",
+              "value": "={{ $json.url }}"
+            },
+            {
+              "name": "caption",
+              "value": "={{ $json.caption }}"
+            },
+            {
+              "name": "access_token",
+              "value": "={{ $json.access_token }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        224,
+        32
+      ],
+      "id": "d01f0bf2-220d-4c20-a09f-489ba2a2d91f",
+      "name": "createContainer"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://graph.facebook.com/v21.0/17841478833954773/media_publish",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "creation_id",
+              "value": "={{ $json.id }}"
+            },
+            {
+              "name": "access_token",
+              "value": "{{access_token}}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        432,
+        32
+      ],
+      "id": "1bb9253a-aa5e-4fe4-86f9-c1ff6174fff6",
+      "name": "publishContainer"
+    },
+    {
+      "parameters": {
+        "content": "Instagram Post - photo + texte classique  ✅\n",
+        "height": 80,
+        "width": 192
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -448,
+        64
+      ],
+      "typeVersion": 1,
+      "id": "8f8034e0-6f56-4b11-b70f-62e1a1420852",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "content": "Instagram carroussel - photos+/ou videos + texte  ✅\n",
+        "height": 80,
+        "width": 208
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -464,
+        352
+      ],
+      "typeVersion": 1,
+      "id": "f3914637-9d73-4772-bc4b-dd20073c86b7",
+      "name": "Sticky Note1"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        272,
+        368
+      ],
+      "id": "ed4b3b93-ad57-4aeb-8800-b49e05758f6a",
+      "name": "Loop Over Items"
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\nconst ids = items.map(item => item.json.id);\nconst firstItem = $('buildBody1').first().json;\n\nconst body = {\n  media_type: \"CAROUSEL\",\n  children: ids,\n  caption: firstItem.caption,\n  access_token: \"{{access_token}}\"\n};\n\nif (firstItem.location_id) {\n  body.location_id = firstItem.location_id;\n}\n\nif (firstItem.user_tags && firstItem.user_tags.length > 0) {\n  body.user_tags = JSON.stringify(firstItem.user_tags);\n}\n\nreturn [{ json: body }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        480,
+        256
+      ],
+      "id": "85fd4eb5-d637-4cb9-9765-16baf7522521",
+      "name": "agreggateIds"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://graph.facebook.com/v21.0/17841478833954773/media",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "media_type",
+              "value": "CAROUSEL"
+            },
+            {
+              "name": "caption",
+              "value": "={{ $json.caption }}"
+            },
+            {
+              "name": "children",
+              "value": "={{ $json.children }}"
+            },
+            {
+              "name": "access_token",
+              "value": "={{ $json.access_token }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        688,
+        256
+      ],
+      "id": "dfe9331f-a25c-4ce8-abaa-58d5a3ac6b3e",
+      "name": "createCarousel"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://graph.facebook.com/v21.0/17841478833954773/media_publish",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "creation_id",
+              "value": "={{ $json.id }}"
+            },
+            {
+              "name": "access_token",
+              "value": "{{access_token}}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        912,
+        256
+      ],
+      "id": "168d779a-097e-4536-a34d-f6d883c40503",
+      "name": "publishCarousel"
+    },
+    {
+      "parameters": {
+        "content": "Instagram stories  ✅\n",
+        "height": 80,
+        "width": 176
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -480,
+        944
+      ],
+      "typeVersion": 1,
+      "id": "a26b275c-6c26-481a-8c38-2dace4f8dcd6",
+      "name": "Sticky Note2"
+    },
+    {
+      "parameters": {
+        "content": "Instagram reels ✅\n",
+        "height": 80,
+        "width": 166
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -464,
+        1344
+      ],
+      "typeVersion": 1,
+      "id": "77b37a80-ff0d-4781-a7c9-2d9f8714ad44",
+      "name": "Sticky Note3"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://graph.facebook.com/v21.0/17841478833954773/media",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "video_url",
+              "value": "={{ $json.video_url }}"
+            },
+            {
+              "name": "access_token",
+              "value": "{{access_token}}"
+            },
+            {
+              "name": "media_type",
+              "value": "REELS"
+            },
+            {
+              "name": "caption",
+              "value": "={{ $json.caption }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        272,
+        1328
+      ],
+      "id": "c1f2c38d-d98e-420a-b71c-58c8ee6def8a",
+      "name": "createReels"
+    },
+    {
+      "parameters": {
+        "amount": 60
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        480,
+        1328
+      ],
+      "id": "36bc7ef1-7267-4524-806d-67c27ddb9d52",
+      "name": "Wait",
+      "webhookId": "811dd503-684c-4921-90df-f0404ff05b9e",
+      "retryOnFail": true,
+      "maxTries": 2
+    },
+    {
+      "parameters": {
+        "url": "=https://graph.facebook.com/v21.0/{{ $('createReels').item.json.id }}?fields=status_code,status&access_token={{access_token}}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        688,
+        1328
+      ],
+      "id": "599e7650-a237-444f-a1d8-4e1fdc4f0422",
+      "name": "checkStatus"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.status_code }}",
+                    "rightValue": "FINISHED",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "b22bb1d3-a883-4c59-a0b7-0b6b18b0b822"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "toBePublished"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "d6e21e6c-f115-4b22-b57b-222bf3ceb264",
+                    "leftValue": "={{ $json.status_code }}",
+                    "rightValue": "IN_PROGRESS",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "enCours"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "ff6036ee-e14f-4698-9e3b-9e589b0ff803",
+                    "leftValue": "={{ $json.status_code }}",
+                    "rightValue": "ERROR",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "erreur"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.3,
+      "position": [
+        896,
+        1312
+      ],
+      "id": "076cc7f9-6f24-43aa-9ac7-7b28fb1d4ca2",
+      "name": "Switch"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Récupère le statut et le code d'erreur\nconst statusCode = $input.first().json.status_code;\nconst status = $input.first().json.status || \"\";\n\n// Extrait le code d'erreur du message (ex: \"error code 2207077\")\nconst errorCodeMatch = status.match(/\\d{7}/);\nconst errorCode = errorCodeMatch ? errorCodeMatch[0] : \"unknown\";\n\n// Dictionnaire des erreurs Instagram\nconst errors = {\n  \"2207001\": {\n    message: \"Erreur serveur Instagram temporaire\",\n    solution: \"Réessayer dans quelques minutes\"\n  },\n  \"2207004\": {\n    message: \"Image trop lourde (max 8MB)\",\n    solution: \"Réduire la taille de l'image\"\n  },\n  \"2207006\": {\n    message: \"Média introuvable ou expiré\",\n    solution: \"Regénérer le container et réessayer\"\n  },\n  \"2207008\": {\n    message: \"Container expiré\",\n    solution: \"Le container a expiré, recréer et publier plus vite\"\n  },\n  \"2207009\": {\n    message: \"Ratio d'image non supporté\",\n    solution: \"Utiliser un ratio entre 4:5 et 1.91:1\"\n  },\n  \"2207010\": {\n    message: \"Texte trop long\",\n    solution: \"Max 2200 caractères, 30 hashtags, 20 mentions\"\n  },\n  \"2207026\": {\n    message: \"Format vidéo non supporté\",\n    solution: \"Utiliser MP4 (H.264), AAC audio, max 1920x1080\"\n  },\n  \"2207030\": {\n    message: \"Éléments du carrousel invalides ou expirés\",\n    solution: \"Recréer les containers des images\"\n  },\n  \"2207040\": {\n    message: \"Trop de mentions (@)\",\n    solution: \"Maximum 20 mentions par publication\"\n  },\n  \"2207042\": {\n    message: \"Limite quotidienne atteinte\",\n    solution: \"Max 50 posts/jour, réessayer demain\"\n  },\n  \"2207050\": {\n    message: \"Compte Instagram restreint\",\n    solution: \"Se connecter à l'app Instagram et suivre les instructions\"\n  },\n  \"2207077\": {\n    message: \"Upload média échoué\",\n    solution: \"Vérifier que l'URL est publique et accessible, format vidéo valide (MP4 H.264, max 1920x1080, audio AAC max 128kbps)\"\n  }\n};\n\n// Récupère l'erreur ou message par défaut\nconst errorInfo = errors[errorCode] || {\n  message: `Erreur inconnue (code: ${errorCode})`,\n  solution: \"Consulter la documentation Meta ou réessayer\"\n};\n\nreturn [{\n  json: {\n    success: false,\n    error_code: errorCode,\n    error_message: errorInfo.message,\n    error_solution: errorInfo.solution,\n    raw_status: status,\n    timestamp: new Date().toISOString()\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1136,
+        1472
+      ],
+      "id": "6132dcd1-08c8-42c7-bcdb-e44fdde9c12d",
+      "name": "errorHandler"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -592,
+        640
+      ],
+      "id": "56e91208-00e1-4507-a043-e6f4b67b2e20",
+      "name": "click"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://graph.facebook.com/v21.0/17841478833954773/media_publish",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "creation_id",
+              "value": "={{ $('createReels').item.json.id }}"
+            },
+            {
+              "name": "access_token",
+              "value": "{{access_token}}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        1152,
+        1296
+      ],
+      "id": "0257cc61-d036-4612-8f6f-27b1af05b692",
+      "name": "publishReel"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "a7cbfcbb-b27a-452f-8c3c-b2661c9d99b6",
+              "leftValue": "={{ $json.type }}",
+              "rightValue": "IMAGE",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        480,
+        448
+      ],
+      "id": "558e0e82-a39f-43f8-aa65-2e0f6caace8b",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://graph.facebook.com/v21.0/17841478833954773/media",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "image_url",
+              "value": "={{ $json.url }}"
+            },
+            {
+              "name": "is_carousel_item",
+              "value": "=true"
+            },
+            {
+              "name": "access_token",
+              "value": "{{access_token}}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        1120,
+        432
+      ],
+      "id": "7e68332e-06c3-4063-bfa8-f85c35f3d718",
+      "name": "createContainerImage"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://graph.facebook.com/v21.0/17841478833954773/media",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "video_url",
+              "value": "={{ $json.url }}"
+            },
+            {
+              "name": "is_carousel_item",
+              "value": "=true"
+            },
+            {
+              "name": "access_token",
+              "value": "{{access_token}}"
+            },
+            {
+              "name": "media_type",
+              "value": "VIDEO"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        688,
+        528
+      ],
+      "id": "fa8ffdc9-945a-4a3e-91a5-6babb10e4f28",
+      "name": "createContainerVideo"
+    },
+    {
+      "parameters": {
+        "amount": 15
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        896,
+        656
+      ],
+      "id": "fa7839a4-f996-40fb-ac44-a3525add9f89",
+      "name": "Wait1",
+      "webhookId": "6e37f89c-3a90-4652-b711-aa44bd3c673e"
+    },
+    {
+      "parameters": {
+        "url": "=https://graph.facebook.com/v21.0/{{ $json.id }}?fields=status_code,status&access_token={{access_token}}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        1072,
+        656
+      ],
+      "id": "30dfadda-e8ef-4ded-bb92-b0372bbea63f",
+      "name": "checkStatus1"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.status_code }}",
+                    "rightValue": "FINISHED",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "b22bb1d3-a883-4c59-a0b7-0b6b18b0b822"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "continue"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "d6e21e6c-f115-4b22-b57b-222bf3ceb264",
+                    "leftValue": "={{ $json.status_code }}",
+                    "rightValue": "IN_PROGRESS",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "enCours"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "ff6036ee-e14f-4698-9e3b-9e589b0ff803",
+                    "leftValue": "={{ $json.status_code }}",
+                    "rightValue": "ERROR",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "erreur"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.3,
+      "position": [
+        1248,
+        640
+      ],
+      "id": "d0aefa9b-b300-4b66-a653-6dedd9a704c5",
+      "name": "Switch1"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Récupère le statut et le code d'erreur\nconst statusCode = $input.first().json.status_code;\nconst status = $input.first().json.status || \"\";\n\n// Extrait le code d'erreur du message (ex: \"error code 2207077\")\nconst errorCodeMatch = status.match(/\\d{7}/);\nconst errorCode = errorCodeMatch ? errorCodeMatch[0] : \"unknown\";\n\n// Dictionnaire des erreurs Instagram\nconst errors = {\n  \"2207001\": {\n    message: \"Erreur serveur Instagram temporaire\",\n    solution: \"Réessayer dans quelques minutes\"\n  },\n  \"2207004\": {\n    message: \"Image trop lourde (max 8MB)\",\n    solution: \"Réduire la taille de l'image\"\n  },\n  \"2207006\": {\n    message: \"Média introuvable ou expiré\",\n    solution: \"Regénérer le container et réessayer\"\n  },\n  \"2207008\": {\n    message: \"Container expiré\",\n    solution: \"Le container a expiré, recréer et publier plus vite\"\n  },\n  \"2207009\": {\n    message: \"Ratio d'image non supporté\",\n    solution: \"Utiliser un ratio entre 4:5 et 1.91:1\"\n  },\n  \"2207010\": {\n    message: \"Texte trop long\",\n    solution: \"Max 2200 caractères, 30 hashtags, 20 mentions\"\n  },\n  \"2207026\": {\n    message: \"Format vidéo non supporté\",\n    solution: \"Utiliser MP4 (H.264), AAC audio, max 1920x1080\"\n  },\n  \"2207030\": {\n    message: \"Éléments du carrousel invalides ou expirés\",\n    solution: \"Recréer les containers des images\"\n  },\n  \"2207040\": {\n    message: \"Trop de mentions (@)\",\n    solution: \"Maximum 20 mentions par publication\"\n  },\n  \"2207042\": {\n    message: \"Limite quotidienne atteinte\",\n    solution: \"Max 50 posts/jour, réessayer demain\"\n  },\n  \"2207050\": {\n    message: \"Compte Instagram restreint\",\n    solution: \"Se connecter à l'app Instagram et suivre les instructions\"\n  },\n  \"2207077\": {\n    message: \"Upload média échoué\",\n    solution: \"Vérifier que l'URL est publique et accessible, format vidéo valide (MP4 H.264, max 1920x1080, audio AAC max 128kbps)\"\n  }\n};\n\n// Récupère l'erreur ou message par défaut\nconst errorInfo = errors[errorCode] || {\n  message: `Erreur inconnue (code: ${errorCode})`,\n  solution: \"Consulter la documentation Meta ou réessayer\"\n};\n\nreturn [{\n  json: {\n    success: false,\n    error_code: errorCode,\n    error_message: errorInfo.message,\n    error_solution: errorInfo.solution,\n    raw_status: status,\n    timestamp: new Date().toISOString()\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1456,
+        688
+      ],
+      "id": "58b32ff6-f8e2-4fa1-8cc2-838026b27c1d",
+      "name": "errorHandler1"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "a7cbfcbb-b27a-452f-8c3c-b2661c9d99b6",
+              "leftValue": "={{ $json.type }}",
+              "rightValue": "IMAGE",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        256,
+        944
+      ],
+      "id": "1118a630-2630-48f2-ae4b-0d677bb81972",
+      "name": "If1"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://graph.facebook.com/v21.0/17841478833954773/media",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "image_url",
+              "value": "={{ $json.url }}"
+            },
+            {
+              "name": "access_token",
+              "value": "{{access_token}}"
+            },
+            {
+              "name": "media_type",
+              "value": "STORIES"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        528,
+        848
+      ],
+      "id": "28744c22-cede-40eb-b990-6846199686e7",
+      "name": "createImageStories"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://graph.facebook.com/v21.0/17841478833954773/media_publish",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "creation_id",
+              "value": "={{ $json.id }}"
+            },
+            {
+              "name": "access_token",
+              "value": "{{access_token}}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        720,
+        848
+      ],
+      "id": "8849caec-9791-4c26-8c55-d7b8518ee8a9",
+      "name": "publishImageStories"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://graph.facebook.com/v21.0/17841478833954773/media",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "video_url",
+              "value": "={{ $json.url }}"
+            },
+            {
+              "name": "access_token",
+              "value": "{{access_token}}"
+            },
+            {
+              "name": "media_type",
+              "value": "STORIES"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        528,
+        1024
+      ],
+      "id": "a950e1c5-288a-4690-8f6e-90bc799a4bf9",
+      "name": "createVideoStories"
+    },
+    {
+      "parameters": {
+        "amount": 60
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        832,
+        1024
+      ],
+      "id": "7451d527-174d-4375-b2fe-dfe0ec3af1cb",
+      "name": "Wait2",
+      "webhookId": "811dd503-684c-4921-90df-f0404ff05b9e",
+      "retryOnFail": true,
+      "maxTries": 2
+    },
+    {
+      "parameters": {
+        "url": "=https://graph.facebook.com/v21.0/{{ $json.id }}?fields=status_code,status&access_token={{access_token}}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        1040,
+        1024
+      ],
+      "id": "8b078fb2-aade-4197-9048-10d99cc0ce69",
+      "name": "checkStatus2"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.status_code }}",
+                    "rightValue": "FINISHED",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "b22bb1d3-a883-4c59-a0b7-0b6b18b0b822"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "toBePublished"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "d6e21e6c-f115-4b22-b57b-222bf3ceb264",
+                    "leftValue": "={{ $json.status_code }}",
+                    "rightValue": "IN_PROGRESS",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "enCours"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "ff6036ee-e14f-4698-9e3b-9e589b0ff803",
+                    "leftValue": "={{ $json.status_code }}",
+                    "rightValue": "ERROR",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "erreur"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.3,
+      "position": [
+        1248,
+        1008
+      ],
+      "id": "4ff48ceb-29f0-4a60-91a9-e52007048cd4",
+      "name": "Switch2"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Récupère le statut et le code d'erreur\nconst statusCode = $input.first().json.status_code;\nconst status = $input.first().json.status || \"\";\n\n// Extrait le code d'erreur du message (ex: \"error code 2207077\")\nconst errorCodeMatch = status.match(/\\d{7}/);\nconst errorCode = errorCodeMatch ? errorCodeMatch[0] : \"unknown\";\n\n// Dictionnaire des erreurs Instagram\nconst errors = {\n  \"2207001\": {\n    message: \"Erreur serveur Instagram temporaire\",\n    solution: \"Réessayer dans quelques minutes\"\n  },\n  \"2207004\": {\n    message: \"Image trop lourde (max 8MB)\",\n    solution: \"Réduire la taille de l'image\"\n  },\n  \"2207006\": {\n    message: \"Média introuvable ou expiré\",\n    solution: \"Regénérer le container et réessayer\"\n  },\n  \"2207008\": {\n    message: \"Container expiré\",\n    solution: \"Le container a expiré, recréer et publier plus vite\"\n  },\n  \"2207009\": {\n    message: \"Ratio d'image non supporté\",\n    solution: \"Utiliser un ratio entre 4:5 et 1.91:1\"\n  },\n  \"2207010\": {\n    message: \"Texte trop long\",\n    solution: \"Max 2200 caractères, 30 hashtags, 20 mentions\"\n  },\n  \"2207026\": {\n    message: \"Format vidéo non supporté\",\n    solution: \"Utiliser MP4 (H.264), AAC audio, max 1920x1080\"\n  },\n  \"2207030\": {\n    message: \"Éléments du carrousel invalides ou expirés\",\n    solution: \"Recréer les containers des images\"\n  },\n  \"2207040\": {\n    message: \"Trop de mentions (@)\",\n    solution: \"Maximum 20 mentions par publication\"\n  },\n  \"2207042\": {\n    message: \"Limite quotidienne atteinte\",\n    solution: \"Max 50 posts/jour, réessayer demain\"\n  },\n  \"2207050\": {\n    message: \"Compte Instagram restreint\",\n    solution: \"Se connecter à l'app Instagram et suivre les instructions\"\n  },\n  \"2207077\": {\n    message: \"Upload média échoué\",\n    solution: \"Vérifier que l'URL est publique et accessible, format vidéo valide (MP4 H.264, max 1920x1080, audio AAC max 128kbps)\"\n  }\n};\n\n// Récupère l'erreur ou message par défaut\nconst errorInfo = errors[errorCode] || {\n  message: `Erreur inconnue (code: ${errorCode})`,\n  solution: \"Consulter la documentation Meta ou réessayer\"\n};\n\nreturn [{\n  json: {\n    success: false,\n    error_code: errorCode,\n    error_message: errorInfo.message,\n    error_solution: errorInfo.solution,\n    raw_status: status,\n    timestamp: new Date().toISOString()\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1488,
+        1168
+      ],
+      "id": "0be93d15-be82-489b-8813-8bd42b2563bd",
+      "name": "errorHandler2"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://graph.facebook.com/v21.0/17841478833954773/media_publish",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "creation_id",
+              "value": "={{ $json.id }}"
+            },
+            {
+              "name": "access_token",
+              "value": "{{access_token}}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        1488,
+        992
+      ],
+      "id": "9a3b9b90-660c-450f-aa85-ae0454dc4bb8",
+      "name": "publishVideoStories"
+    },
+    {
+      "parameters": {
+        "jsCode": "return [{\n  json: {\n    url: \"https://storage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4\",\n    type: \"VIDEO\"  // ou \"IMAGE\"\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -336,
+        640
+      ],
+      "id": "326f7d29-b2a1-47ac-9cb6-b8da7ca14e7a",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "jsCode": "const item = $input.first().json;\n\nconst body = {\n  image_url: item.url,\n  caption: item.caption,\n  access_token: \"{{access_token}}\"\n};\n\nif (item.location_id) {\n  body.location_id = item.location_id;\n}\n\nif (item.user_tags && item.user_tags.length > 0) {\n  body.user_tags = JSON.stringify(item.user_tags);\n}\n\nreturn [{ json: body }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        16,
+        32
+      ],
+      "id": "ea4f869f-e128-469a-a9d5-dee3209bb9a8",
+      "name": "buildBody"
+    },
+    {
+      "parameters": {
+        "jsCode": "const item = $input.first().json;\n\nconst medias = item.medias.map(media => ({\n  url: media.url,\n  type: media.type,\n  caption: item.caption,\n  location_id: item.location_id || null,\n  user_tags: item.user_tags || []\n}));\n\nreturn medias.map(m => ({ json: m }));"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        32,
+        368
+      ],
+      "id": "d943f5a2-d362-4282-8d63-59b9a55269f6",
+      "name": "buildBody1"
+    },
+    {
+      "parameters": {
+        "jsCode": "const item = $input.first().json;\n\nconst body = {\n  video_url: item.video_url,\n  media_type: \"REELS\",\n  caption: item.caption,\n  access_token: \"{{access_token}}\"\n};\n\nif (item.location_id) {\n  body.location_id = item.location_id;\n}\n\n// Pas de user_tags sur les Reels\n\nreturn [{ json: body }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        32,
+        1328
+      ],
+      "id": "b34ce333-c530-4262-ae19-7c3d329f263a",
+      "name": "buildBody2"
+    },
+    {
+      "parameters": {
+        "jsCode": "const item = $input.first().json;\n\nconst body = {\n  media_type: \"STORIES\",\n  access_token: \"{{access_token}}\"\n};\n\nif (item.type === \"IMAGE\") {\n  body.image_url = item.url;\n} else {\n  body.video_url = item.url;\n}\n\nif (item.location_id) {\n  body.location_id = item.location_id;\n}\n\n// Pas de user_tags sur les Stories\n\nreturn [{\n  json: {\n    ...body,\n    type: item.type  // Pour le IF après\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        32,
+        944
+      ],
+      "id": "7b64f3d6-afc1-4631-8697-fbf36e5788ae",
+      "name": "buildBody3"
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "10 10-22/2 * * *"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        -16,
+        -240
+      ],
+      "id": "cc8a6a0c-1ff9-4307-b5f6-e2668196232f",
+      "name": "Schedule Trigger"
+    },
+    {
+      "parameters": {
+        "content": "Media cleanup\n",
+        "height": 80,
+        "width": 192
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -448,
+        -208
+      ],
+      "typeVersion": 1,
+      "id": "734d7d4e-2b8b-406e-b6bc-d02981e8aa0f",
+      "name": "Sticky Note4"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT * FROM media\nWHERE to_delete_at <= NOW()\nAND published_at IS NOT NULL\nAND published_at <= NOW() - INTERVAL '1 day';",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        224,
+        -240
+      ],
+      "id": "ceac32fa-2441-46e8-89b4-68553ee44cd0",
+      "name": "Execute a SQL query",
+      "credentials": {
+        "postgres": {
+          "id": "Lk7Fb9waGLGBzxB3",
+          "name": "supabase testLucas"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "content": "check scheduled posts",
+        "height": 80,
+        "width": 192
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -448,
+        -432
+      ],
+      "typeVersion": 1,
+      "id": "41224a36-520d-4ff7-875a-681218b2fed3",
+      "name": "Sticky Note5"
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 10-22/2 * * *"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        -32,
+        -464
+      ],
+      "id": "0a8cc157-6282-4e20-b12a-eaa50ac0de78",
+      "name": "Schedule Trigger1"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT \n    p.*,\n    sa.platform,\n    sa.account_id,\n    sa.access_token\nFROM posts p\nLEFT JOIN social_accounts sa ON p.social_account_id = sa.id\nWHERE p.status = 'scheduled'\nAND p.scheduled_at <= NOW()\nORDER BY p.scheduled_at ASC\nLIMIT 10;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        224,
+        -464
+      ],
+      "id": "1f84c375-38a1-49ca-aab5-b4d4f632faf8",
+      "name": "Execute a SQL query1",
+      "credentials": {
+        "postgres": {
+          "id": "Lk7Fb9waGLGBzxB3",
+          "name": "supabase testLucas"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "e798495e-fcfb-4ccf-8403-ae1a352b6d9b",
+              "leftValue": "={{ $json.lenght }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        432,
+        -464
+      ],
+      "id": "bfe33b6c-9022-4f4a-b0e0-c5ae4c8fba03",
+      "name": "IF - \"Has Posts?\""
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        640,
+        -560
+      ],
+      "id": "b0646f5c-0e8e-469f-93ee-da7c1d64bce2",
+      "name": "Loop Over Items1"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "",
+                    "rightValue": "",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "67a45f19-96df-4937-aa08-f3897bb6dab3"
+                  }
+                ],
+                "combinator": "and"
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.3,
+      "position": [
+        848,
+        -464
+      ],
+      "id": "6ca11a38-1bda-47a7-b545-c81a0afddd2a",
+      "name": "Switch3"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "e798495e-fcfb-4ccf-8403-ae1a352b6d9b",
+              "leftValue": "={{ $json.lenght }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        432,
+        -240
+      ],
+      "id": "3f6004e7-df24-43a5-80df-8da3594e6bf2",
+      "name": "IF - \"Has Posts?\"1"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        656,
+        -256
+      ],
+      "id": "8319e64d-1738-4f24-a468-aa444601f31f",
+      "name": "Loop Over Items2"
+    },
+    {
+      "parameters": {
+        "method": "DELETE",
+        "url": "=https://dadppppibcimkqiqghsy.supabase.co/storage/v1/object/medias/{{ $json.file_path }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        848,
+        -192
+      ],
+      "id": "6c07f478-7d11-4879-b519-bb06f54623ef",
+      "name": "HTTP Request",
+      "credentials": {
+        "supabaseApi": {
+          "id": "UcgJOJEkR9zRmyUp",
+          "name": "Supabase - lucasTest"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "DELETE FROM media WHERE id = '{{ $json.id }}';",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        1056,
+        -192
+      ],
+      "id": "dff100eb-7d10-484b-abeb-e5e89a41419c",
+      "name": "Execute a SQL query2",
+      "credentials": {
+        "postgres": {
+          "id": "Lk7Fb9waGLGBzxB3",
+          "name": "supabase testLucas"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "instagram-post-image",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -176,
+        32
+      ],
+      "id": "cab11207-585a-4ef2-9cc9-cbec5a4577cb",
+      "name": "INSTA - POST-IMAGE",
+      "webhookId": "67e3323c-1360-4d1a-b5fe-56f6e2713f68"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "instagram-post-carrousel",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -176,
+        368
+      ],
+      "id": "d547503d-1190-4c82-8c5a-2a783298923c",
+      "name": "INSTA - POST-CARROUSEL",
+      "webhookId": "67e3323c-1360-4d1a-b5fe-56f6e2713f68"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "instagram-post-stories",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -160,
+        944
+      ],
+      "id": "0434b30e-0bc7-4d83-93e0-6f9570d620ab",
+      "name": "INSTA - POST-STORIES",
+      "webhookId": "67e3323c-1360-4d1a-b5fe-56f6e2713f68"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "instagram-post-reels",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -160,
+        1328
+      ],
+      "id": "025476a0-0809-401d-928d-cb2ddccc8201",
+      "name": "INSTA - POST-REELS",
+      "webhookId": "67e3323c-1360-4d1a-b5fe-56f6e2713f68"
+    }
+  ],
+  "connections": {
+    "createContainer": {
+      "main": [
+        [
+          {
+            "node": "publishContainer",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Over Items": {
+      "main": [
+        [
+          {
+            "node": "agreggateIds",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "agreggateIds": {
+      "main": [
+        [
+          {
+            "node": "createCarousel",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "createCarousel": {
+      "main": [
+        [
+          {
+            "node": "publishCarousel",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "createReels": {
+      "main": [
+        [
+          {
+            "node": "Wait",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait": {
+      "main": [
+        [
+          {
+            "node": "checkStatus",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "checkStatus": {
+      "main": [
+        [
+          {
+            "node": "Switch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch": {
+      "main": [
+        [
+          {
+            "node": "publishReel",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Wait",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "errorHandler",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "click": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "createContainerImage",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "createContainerVideo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "createContainerImage": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "createContainerVideo": {
+      "main": [
+        [
+          {
+            "node": "Wait1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait1": {
+      "main": [
+        [
+          {
+            "node": "checkStatus1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "checkStatus1": {
+      "main": [
+        [
+          {
+            "node": "Switch1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch1": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Wait1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "errorHandler1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If1": {
+      "main": [
+        [
+          {
+            "node": "createImageStories",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "createVideoStories",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "createImageStories": {
+      "main": [
+        [
+          {
+            "node": "publishImageStories",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "createVideoStories": {
+      "main": [
+        [
+          {
+            "node": "Wait2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait2": {
+      "main": [
+        [
+          {
+            "node": "checkStatus2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "checkStatus2": {
+      "main": [
+        [
+          {
+            "node": "Switch2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch2": {
+      "main": [
+        [
+          {
+            "node": "publishVideoStories",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Wait2",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "errorHandler2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "publishVideoStories": {
+      "main": [
+        []
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        []
+      ]
+    },
+    "buildBody": {
+      "main": [
+        [
+          {
+            "node": "createContainer",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "buildBody1": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "buildBody2": {
+      "main": [
+        [
+          {
+            "node": "createReels",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "buildBody3": {
+      "main": [
+        [
+          {
+            "node": "If1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Execute a SQL query",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execute a SQL query": {
+      "main": [
+        [
+          {
+            "node": "IF - \"Has Posts?\"1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Schedule Trigger1": {
+      "main": [
+        [
+          {
+            "node": "Execute a SQL query1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execute a SQL query1": {
+      "main": [
+        [
+          {
+            "node": "IF - \"Has Posts?\"",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF - \"Has Posts?\"": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Over Items1": {
+      "main": [
+        [],
+        [
+          {
+            "node": "Switch3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF - \"Has Posts?\"1": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Over Items2": {
+      "main": [
+        [],
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "Execute a SQL query2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execute a SQL query2": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "INSTA - POST-IMAGE": {
+      "main": [
+        [
+          {
+            "node": "buildBody",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "INSTA - POST-CARROUSEL": {
+      "main": [
+        [
+          {
+            "node": "buildBody1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "INSTA - POST-STORIES": {
+      "main": [
+        [
+          {
+            "node": "buildBody3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "INSTA - POST-REELS": {
+      "main": [
+        [
+          {
+            "node": "buildBody2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "31c19f8443ca45bd428a49d9b91cc72a6b061de09e6f91e627841e4e4c599d21"
+  }
+}
