@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { SocialAccountsList } from '@/components/admin/SocialAccountsList'
 
 export default async function SocialAccountsPage() {
-  const supabase = createClient()
+  const supabase = await createClient()
 
   const { data: accounts } = await supabase
     .from('social_accounts')

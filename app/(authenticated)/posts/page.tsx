@@ -6,7 +6,7 @@ import { PenSquare, Eye } from 'lucide-react'
 import { formatDate, getStatusColor, getStatusLabel, getPlatformIcon } from '@/lib/utils'
 
 export default async function PostsPage() {
-  const supabase = createClient()
+  const supabase = await createClient()
   
   const { data: { user } } = await supabase.auth.getUser()
   

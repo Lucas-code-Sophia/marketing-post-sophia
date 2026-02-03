@@ -21,7 +21,7 @@ const POST_TYPES: Record<PlatformType, PostType[]> = {
 
 export default function NewPostPage() {
   const router = useRouter()
-  const supabase = createClient()
+  const supabase = await createClient()
   
   const [loading, setLoading] = useState(false)
   const [uploading, setUploading] = useState(false)

@@ -4,7 +4,7 @@ import { Badge } from '@/components/ui/badge'
 import { formatDate } from '@/lib/utils'
 
 export default async function UsersPage() {
-  const supabase = createClient()
+  const supabase = await createClient()
   
   const { data: users } = await supabase
     .from('users')

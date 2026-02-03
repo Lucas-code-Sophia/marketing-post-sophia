@@ -126,42 +126,5 @@ Document de référence pour savoir où on en est sur le projet. À mettre à jo
 3. **Workflow n8n** : Schedule Trigger toutes les 2 h (ou aux heures 10, 12, 14, 16, 18, 20, 22) vers `POST /api/posts/check-scheduled`.
 4. **Titres des jours partagés** (optionnel) : table Supabase + adaptation de `useDayTitles`.
 
--- Table des réglages (tokens API, etc.) — accès réservé aux admins
-CREATE TABLE IF NOT EXISTS public.settings (
-  key text PRIMARY KEY,
-  value text,
-  updated_at timestamptz DEFAULT now()
-);
-
-COMMENT ON TABLE public.settings IS 'Réglages applicatifs (ex: token Instagram) ; lecture/écriture admin uniquement.';
-
-ALTER TABLE public.settings ENABLE ROW LEVEL SECURITY;
-
-CREATE POLICY "settings_select_admin"
-  ON public.settings FOR SELECT TO authenticated
-  USING ((SELECT role FROM public.users WHERE id = auth.uid()) = 'admin');
-
-CREATE POLICY "settings_insert_admin"
-  ON public.settings FOR INSERT TO authenticated
-  WITH CHECK ((SELECT role FROM public.users WHERE id = auth.uid()) = 'admin');
-
-CREATE POLICY "settings_update_admin"
-  ON public.settings FOR UPDATE TO authenticated
-  USING ((SELECT role FROM public.users WHERE id = auth.uid()) = 'admin');
-
-CREATE OR REPLACE FUNCTION public.settings_updated_at()
-RETURNS TRIGGER AS $$
-BEGIN
-  NEW.updated_at = now();
-  RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
-
-DROP TRIGGER IF EXISTS settings_updated_at ON public.settings;
-CREATE TRIGGER settings_updated_at
-  BEFORE UPDATE ON public.settings
-  FOR EACH ROW EXECUTE FUNCTION public.settings_updated_at();
-
----
 
 *Dernière mise à jour : février 2025*

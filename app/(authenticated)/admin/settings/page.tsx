@@ -95,10 +95,10 @@ export default function SettingsPage() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Instagram className="h-5 w-5" />
-              Token utilisateur Instagram
+              Token Page Access
             </CardTitle>
             <p className="text-sm text-muted-foreground">
-              Token d’accès utilisateur (long-lived) pour les appels à l’API Instagram Graph. Il est stocké en base et utilisé côté serveur pour les statistiques.
+              Token Page Access (long-lived) pour les appels à l’API Instagram Graph. Il est stocké en base et utilisé côté serveur pour les statistiques.
             </p>
           </CardHeader>
           <CardContent className="space-y-4">

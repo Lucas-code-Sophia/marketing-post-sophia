@@ -6,7 +6,7 @@ import { PenSquare, Clock, CheckCircle, AlertCircle } from 'lucide-react'
 import { formatDate, getStatusColor, getStatusLabel, getPlatformIcon } from '@/lib/utils'
 
 export default async function DashboardPage() {
-  const supabase = createClient()
+  const supabase = await createClient()
   
   const { data: { user } } = await supabase.auth.getUser()
   
