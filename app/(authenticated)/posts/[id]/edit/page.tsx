@@ -8,8 +8,16 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
-import { ArrowLeft, Upload, X, Loader2 } from 'lucide-react'
+import { ArrowLeft, Upload, X, Loader2, Trash2 } from 'lucide-react'
 import Link from 'next/link'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 import { SchedulePicker } from '@/components/posts/SchedulePicker'
 import { parseScheduleValue, buildScheduleValue } from '@/lib/schedule'
 import type { SocialAccount, PlatformType, PostType, MediaItem, Post } from '@/types'
@@ -28,6 +36,8 @@ export default function EditPostPage() {
   
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [deleting, setDeleting] = useState(false)
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
   const [uploading, setUploading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [socialAccounts, setSocialAccounts] = useState<SocialAccount[]>([])
@@ -235,6 +245,27 @@ export default function EditPostPage() {
       setError(err.message || 'Erreur lors de la modification')
     } finally {
       setSaving(false)
+    }
+  }
+
+  async function handleDelete() {
+    setDeleting(true)
+    setError(null)
+    try {
+      const { error: deleteError } = await supabase
+        .from('posts')
+        .delete()
+        .eq('id', postId)
+
+      if (deleteError) throw deleteError
+
+      setDeleteConfirmOpen(false)
+      router.push('/posts')
+      router.refresh()
+    } catch (err: any) {
+      setError(err.message || 'Erreur lors de la suppression')
+    } finally {
+      setDeleting(false)
     }
   }
 
@@ -470,26 +501,75 @@ export default function EditPostPage() {
             />
 
             {/* Submit */}
-            <div className="flex gap-4">
-              <Button type="submit" disabled={saving || !platform || !postType}>
-                {saving ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Enregistrement...
-                  </>
-                ) : (
-                  'Enregistrer les modifications'
-                )}
-              </Button>
-              <Link href={`/posts/${postId}`}>
-                <Button type="button" variant="outline" disabled={saving}>
-                  Annuler
+            <div className="flex flex-wrap items-center justify-between gap-4">
+              <div className="flex gap-2">
+                <Button type="submit" disabled={saving || deleting || !platform || !postType}>
+                  {saving ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Enregistrement...
+                    </>
+                  ) : (
+                    'Enregistrer les modifications'
+                  )}
                 </Button>
-              </Link>
+                <Link href={`/posts/${postId}`}>
+                  <Button type="button" variant="outline" disabled={saving || deleting}>
+                    Annuler
+                  </Button>
+                </Link>
+              </div>
+              <Button
+                type="button"
+                variant="destructive"
+                disabled={saving || deleting}
+                onClick={() => setDeleteConfirmOpen(true)}
+                className="flex items-center gap-2"
+              >
+                <Trash2 className="h-4 w-4" />
+                Supprimer le post
+              </Button>
             </div>
           </form>
         </CardContent>
       </Card>
+
+      {/* Confirmation suppression */}
+      <Dialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Supprimer ce post ?</DialogTitle>
+            <DialogDescription>
+              Cette action est irréversible. Le post sera définitivement supprimé de la base de données.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setDeleteConfirmOpen(false)}
+              disabled={deleting}
+            >
+              Annuler
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              onClick={handleDelete}
+              disabled={deleting}
+            >
+              {deleting ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Suppression...
+                </>
+              ) : (
+                'Supprimer'
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

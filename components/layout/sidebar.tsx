@@ -11,7 +11,9 @@ import {
   LogOut,
   Menu,
   X,
-  Calendar
+  Calendar,
+  BarChart3,
+  Settings
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
@@ -38,11 +40,13 @@ export function Sidebar({ userRole }: SidebarProps) {
   const navigation = [
     { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard, roles: ['admin', 'manager', 'user'] },
     { name: 'Calendrier', href: '/calendar', icon: Calendar, roles: ['admin', 'manager', 'user'] },
+    { name: 'Statistiques', href: '/statistiques', icon: BarChart3, roles: ['admin', 'manager', 'user'] },
     { name: 'Créer un post', href: '/posts/new', icon: PenSquare, roles: ['admin', 'manager', 'user'] },
     { name: 'Mes posts', href: '/posts', icon: FileCheck, roles: ['admin', 'manager', 'user'] },
     { name: 'Validation', href: '/validation', icon: FileCheck, roles: ['admin', 'manager'] },
     { name: 'Utilisateurs', href: '/admin/users', icon: Users, roles: ['admin'] },
     { name: 'Comptes sociaux', href: '/admin/social-accounts', icon: Share2, roles: ['admin'] },
+    { name: 'Réglages', href: '/admin/settings', icon: Settings, roles: ['admin'] },
   ]
 
   const filteredNavigation = navigation.filter(item => 

@@ -5,7 +5,7 @@ import { fr } from 'date-fns/locale/fr'
 import type { Post } from '@/types'
 import { getPlatformColor } from '@/lib/calendar/utils'
 import { getStatusLabel } from '@/lib/utils'
-import { Play, Images } from 'lucide-react'
+import { Play, LayoutGrid } from 'lucide-react'
 import { PostPreviewCompact } from '@/components/posts/PostPreviewCompact'
 import { cn } from '@/lib/utils'
 
@@ -99,7 +99,7 @@ export function CalendarEvent({ post, compact = false, onClick }: CalendarEventP
           )}
             {isCarousel && (
               <div className="absolute top-3 right-3 bg-black/80 text-white p-2 rounded-full z-10 shadow-lg">
-                <Images className="w-4 h-4" />
+                <LayoutGrid className="w-4 h-4" />
                 <span className="absolute -bottom-1 -right-1 bg-white text-black text-[10px] px-1 rounded font-bold">
                   {mediasArray.length}
                 </span>
