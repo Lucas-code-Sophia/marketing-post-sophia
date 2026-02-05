@@ -13,7 +13,9 @@ import {
   X,
   Calendar,
   BarChart3,
-  Settings
+  Settings,
+  LayoutTemplate,
+  Star
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
@@ -37,19 +39,28 @@ export function Sidebar({ userRole }: SidebarProps) {
     router.push('/login')
   }
 
-  const navigation = [
+  const mainNavigation = [
     { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard, roles: ['admin', 'manager', 'user'] },
     { name: 'Calendrier', href: '/calendar', icon: Calendar, roles: ['admin', 'manager', 'user'] },
     { name: 'Statistiques', href: '/statistiques', icon: BarChart3, roles: ['admin', 'manager', 'user'] },
+    { name: 'Templates', href: '/templates', icon: LayoutTemplate, roles: ['admin', 'manager', 'user'] },
+    { name: 'Avis Google', href: '/avis', icon: Star, roles: ['admin', 'manager', 'user'] },
     { name: 'Créer un post', href: '/posts/new', icon: PenSquare, roles: ['admin', 'manager', 'user'] },
     { name: 'Mes posts', href: '/posts', icon: FileCheck, roles: ['admin', 'manager', 'user'] },
     { name: 'Validation', href: '/validation', icon: FileCheck, roles: ['admin', 'manager'] },
-    { name: 'Utilisateurs', href: '/admin/users', icon: Users, roles: ['admin'] },
     { name: 'Comptes sociaux', href: '/admin/social-accounts', icon: Share2, roles: ['admin'] },
+  ]
+
+  const bottomNavigation = [
+    { name: 'Utilisateurs', href: '/admin/users', icon: Users, roles: ['admin'] },
     { name: 'Réglages', href: '/admin/settings', icon: Settings, roles: ['admin'] },
   ]
 
-  const filteredNavigation = navigation.filter(item => 
+  const filteredMainNavigation = mainNavigation.filter(item => 
+    item.roles.includes(userRole)
+  )
+
+  const filteredBottomNavigation = bottomNavigation.filter(item => 
     item.roles.includes(userRole)
   )
 
@@ -76,9 +87,9 @@ export function Sidebar({ userRole }: SidebarProps) {
             <span className="text-xl font-bold text-primary">Carmen Social</span>
           </div>
 
-          {/* Navigation */}
+          {/* Navigation principale */}
           <nav className="flex-1 px-4 py-4 space-y-1 overflow-y-auto">
-            {filteredNavigation.map((item) => {
+            {filteredMainNavigation.map((item) => {
               // Logique plus précise pour éviter que /posts/new active aussi /posts
               let isActive = false
               if (item.href === '/posts') {
@@ -107,16 +118,41 @@ export function Sidebar({ userRole }: SidebarProps) {
             })}
           </nav>
 
-          {/* Logout */}
-          <div className="p-4 border-t">
-            <Button
-              variant="ghost"
-              className="w-full justify-start text-gray-600"
-              onClick={handleLogout}
-            >
-              <LogOut className="mr-3 h-5 w-5" />
-              Déconnexion
-            </Button>
+          {/* Navigation bas (Utilisateurs, Réglages) + Logout */}
+          <div className="border-t">
+            {filteredBottomNavigation.length > 0 && (
+              <nav className="px-4 py-2 space-y-1">
+                {filteredBottomNavigation.map((item) => {
+                  const isActive = pathname === item.href || pathname.startsWith(item.href + '/')
+                  return (
+                    <Link
+                      key={item.name}
+                      href={item.href}
+                      onClick={() => setIsOpen(false)}
+                      className={cn(
+                        "flex items-center px-4 py-2 text-sm font-medium rounded-md transition-colors",
+                        isActive
+                          ? "bg-primary text-primary-foreground"
+                          : "text-gray-600 hover:bg-gray-100"
+                      )}
+                    >
+                      <item.icon className="mr-3 h-5 w-5" />
+                      {item.name}
+                    </Link>
+                  )
+                })}
+              </nav>
+            )}
+            <div className="p-4">
+              <Button
+                variant="ghost"
+                className="w-full justify-start text-gray-600"
+                onClick={handleLogout}
+              >
+                <LogOut className="mr-3 h-5 w-5" />
+                Déconnexion
+              </Button>
+            </div>
           </div>
         </div>
       </div>

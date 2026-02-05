@@ -1,0 +1,144 @@
+{
+  "name": "GMB Reviews Sync - Daily",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 24,
+              "triggerAtHour": 7
+            }
+          ]
+        }
+      },
+      "id": "schedule-trigger",
+      "name": "Tous les jours à 7h",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [0, 0]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "=https://mybusiness.googleapis.com/v4/accounts/{{ $json.account_id }}/locations/{{ $json.location_id }}/reviews",
+        "authentication": "oAuth2Api",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "pageSize",
+              "value": "50"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "http-get-reviews",
+      "name": "GET GMB Reviews",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [220, 0],
+      "credentials": {
+        "oAuth2Api": {
+          "id": "REMPLACER_PAR_ID_CREDENTIAL",
+          "name": "Google Business Profile OAuth"
+        }
+      },
+      "notes": "Remplacer account_id et location_id par vos valeurs GMB"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Transformer les avis GMB pour Supabase\nconst reviews = $input.first().json.reviews || [];\n\nreturn reviews.map(review => ({\n  json: {\n    review_id: review.reviewId,\n    reviewer_name: review.reviewer?.displayName || 'Anonyme',\n    reviewer_photo_url: review.reviewer?.profilePhotoUrl || null,\n    star_rating: review.starRating === 'FIVE' ? 5 : \n                 review.starRating === 'FOUR' ? 4 :\n                 review.starRating === 'THREE' ? 3 :\n                 review.starRating === 'TWO' ? 2 : 1,\n    comment: review.comment || null,\n    review_reply: review.reviewReply?.comment || null,\n    review_reply_at: review.reviewReply?.updateTime || null,\n    created_at: review.createTime,\n    updated_at: review.updateTime,\n    social_account_id: 'REMPLACER_PAR_UUID_COMPTE_GMB'\n  }\n}));"
+      },
+      "id": "code-transform",
+      "name": "Transform Reviews",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [440, 0]
+    },
+    {
+      "parameters": {
+        "operation": "upsert",
+        "schema": {
+          "__rl": true,
+          "mode": "list",
+          "value": "public"
+        },
+        "table": {
+          "__rl": true,
+          "mode": "list",
+          "value": "gmb_reviews"
+        },
+        "conflictFields": ["review_id"],
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "review_id": "={{ $json.review_id }}",
+            "social_account_id": "={{ $json.social_account_id }}",
+            "reviewer_name": "={{ $json.reviewer_name }}",
+            "reviewer_photo_url": "={{ $json.reviewer_photo_url }}",
+            "star_rating": "={{ $json.star_rating }}",
+            "comment": "={{ $json.comment }}",
+            "review_reply": "={{ $json.review_reply }}",
+            "review_reply_at": "={{ $json.review_reply_at }}",
+            "created_at": "={{ $json.created_at }}",
+            "updated_at": "={{ $json.updated_at }}",
+            "fetched_at": "={{ $now.toISO() }}"
+          }
+        },
+        "options": {}
+      },
+      "id": "supabase-upsert",
+      "name": "Upsert Supabase",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [660, 0],
+      "credentials": {
+        "supabaseApi": {
+          "id": "REMPLACER_PAR_ID_CREDENTIAL_SUPABASE",
+          "name": "Supabase Carmen"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Tous les jours à 7h": {
+      "main": [
+        [
+          {
+            "node": "GET GMB Reviews",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GET GMB Reviews": {
+      "main": [
+        [
+          {
+            "node": "Transform Reviews",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Transform Reviews": {
+      "main": [
+        [
+          {
+            "node": "Upsert Supabase",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

@@ -1,0 +1,138 @@
+{
+  "name": "Instagram Stats Daily - Sophia Capferret",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 24,
+              "triggerAtHour": 8
+            }
+          ]
+        }
+      },
+      "id": "schedule-trigger",
+      "name": "Tous les jours à 8h",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [0, 0]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "https://graph.facebook.com/v21.0/17841405211466761",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpQueryAuth",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "fields",
+              "value": "followers_count,follows_count,media_count,username"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "http-instagram-stats",
+      "name": "GET Instagram Stats",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [220, 0],
+      "credentials": {
+        "httpQueryAuth": {
+          "id": "REMPLACER_PAR_ID_CREDENTIAL",
+          "name": "Graph API Token"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Préparer les données pour Supabase\nconst today = new Date().toISOString().split('T')[0]; // Format YYYY-MM-DD\n\nreturn [{\n  json: {\n    social_account_id: '2c6ce840-8e03-4ddb-926d-97cd215dbac0', // sophia.capferret\n    date: today,\n    followers_count: $input.first().json.followers_count,\n    follows_count: $input.first().json.follows_count,\n    media_count: $input.first().json.media_count\n  }\n}];"
+      },
+      "id": "code-transform",
+      "name": "Préparer données",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [440, 0]
+    },
+    {
+      "parameters": {
+        "operation": "upsert",
+        "schema": {
+          "__rl": true,
+          "mode": "list",
+          "value": "public"
+        },
+        "table": {
+          "__rl": true,
+          "mode": "list",
+          "value": "instagram_account_stats"
+        },
+        "conflictFields": ["social_account_id", "date"],
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "social_account_id": "={{ $json.social_account_id }}",
+            "date": "={{ $json.date }}",
+            "followers_count": "={{ $json.followers_count }}",
+            "follows_count": "={{ $json.follows_count }}",
+            "media_count": "={{ $json.media_count }}"
+          }
+        },
+        "options": {}
+      },
+      "id": "supabase-upsert",
+      "name": "Upsert Supabase",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [660, 0],
+      "credentials": {
+        "supabaseApi": {
+          "id": "REMPLACER_PAR_ID_CREDENTIAL_SUPABASE",
+          "name": "Supabase Carmen"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Tous les jours à 8h": {
+      "main": [
+        [
+          {
+            "node": "GET Instagram Stats",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GET Instagram Stats": {
+      "main": [
+        [
+          {
+            "node": "Préparer données",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Préparer données": {
+      "main": [
+        [
+          {
+            "node": "Upsert Supabase",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

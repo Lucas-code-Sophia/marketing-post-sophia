@@ -11,8 +11,9 @@ import { PublishButton } from '@/components/posts/PublishButton'
 export default async function PostDetailPage({
   params,
 }: {
-  params: { id: string }
+  params: Promise<{ id: string }>
 }) {
+  const { id } = await params
   const supabase = await createClient()
   
   const { data: { user } } = await supabase.auth.getUser()
@@ -20,7 +21,7 @@ export default async function PostDetailPage({
   const { data: post } = await supabase
     .from('posts')
     .select('*')
-    .eq('id', params.id)
+    .eq('id', id)
     .single()
 
   if (!post) {

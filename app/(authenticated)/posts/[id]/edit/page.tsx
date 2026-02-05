@@ -32,7 +32,7 @@ export default function EditPostPage() {
   const router = useRouter()
   const params = useParams()
   const postId = params.id as string
-  const supabase = await createClient()
+  const supabase = createClient()
   
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)

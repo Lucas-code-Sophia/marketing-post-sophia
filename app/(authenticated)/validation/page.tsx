@@ -13,7 +13,7 @@ import { SchedulePicker } from '@/components/posts/SchedulePicker'
 import type { Post } from '@/types'
 
 export default function ValidationPage() {
-  const supabase = await createClient()
+  const supabase = createClient()
   const [posts, setPosts] = useState<Post[]>([])
   const [loading, setLoading] = useState(true)
   const [actionLoading, setActionLoading] = useState<string | null>(null)

@@ -6,22 +6,22 @@ Document de référence pour savoir où on en est sur le projet. À mettre à jo
 
 ## 1. Démarrage du projet
 
-- **Problème** : la commande `next` n’était pas reconnue.
+- **Problème** : la commande `next` n'était pas reconnue.
 - **Action** : `npm install` dans `carmen-social-manager` pour installer les dépendances (Next.js, Supabase, etc.).
-- **État** : OK – le projet peut être lancé avec `npm run dev`.
+- **État** : ✅ OK – le projet peut être lancé avec `npm run dev`.
 
 ---
 
 ## 2. Configuration Supabase
 
-- **Contexte** : connexion à la base Supabase pour l’app.
+- **Contexte** : connexion à la base Supabase pour l'app.
 - **Action** :
   - Création de `.env.local` avec :
     - `NEXT_PUBLIC_SUPABASE_URL` = URL du projet Supabase
     - `NEXT_PUBLIC_SUPABASE_ANON_KEY` = clé anonyme
   - Création / vérification du `.gitignore` pour ne pas committer `.env*.local`.
-- **État** : OK – l’app utilise Supabase (auth, posts, etc.).
-- **À faire côté déploiement** : définir les mêmes variables d’environnement (et éventuellement `SUPABASE_SERVICE_ROLE_KEY`, `SCHEDULER_API_KEY`) sur l’hébergement.
+- **État** : ✅ OK – l'app utilise Supabase (auth, posts, etc.).
+- **À faire côté déploiement** : définir les mêmes variables d'environnement (et éventuellement `SUPABASE_SERVICE_ROLE_KEY`, `SCHEDULER_API_KEY`) sur l'hébergement.
 
 ---
 
@@ -29,11 +29,11 @@ Document de référence pour savoir où on en est sur le projet. À mettre à jo
 
 - **Fonctionnement** :
   - Les posts sont créés / validés avec un statut `scheduled` et une date/heure `scheduled_at`.
-  - Un workflow **n8n** appelle périodiquement l’API :  
+  - Un workflow **n8n** appelle périodiquement l'API :  
     `POST /api/posts/check-scheduled` (avec header `x-api-key: SCHEDULER_API_KEY`).
-  - L’API récupère les posts `scheduled` dont `scheduled_at` est passée, puis les publie via le webhook n8n (Facebook / Instagram).
-- **Fréquence** : définie dans n8n (Schedule Trigger). Pas dans l’app.
-- **État** : OK – tant que n8n appelle l’URL avec la bonne clé, les posts programmés sont publiés.
+  - L'API récupère les posts `scheduled` dont `scheduled_at` est passée, puis les publie via le webhook n8n (Facebook / Instagram).
+- **Fréquence** : définie dans n8n (Schedule Trigger). Pas dans l'app.
+- **État** : ✅ OK – tant que n8n appelle l'URL avec la bonne clé, les posts programmés sont publiés.
 
 ---
 
@@ -43,88 +43,200 @@ Document de référence pour savoir où on en est sur le projet. À mettre à jo
 - **Règles** :
   - Publication possible uniquement aux **heures pleines** : **10h, 12h, 14h, 16h, 18h, 20h, 22h**.
   - n8n peut donc tourner **toutes les 2 heures** (ou à ces heures précises).
-- **Modifs** :
-  - `lib/schedule.ts` : constantes `SCHEDULE_HOURS`, `parseScheduleValue`, `buildScheduleValue`, `snapHourToSlot`.
-  - `components/posts/SchedulePicker.tsx` : sélecteur date + heure (uniquement 10, 12, 14, 16, 18, 20, 22).
-  - Pages **Nouveau post**, **Édition post**, **Validation** : utilisation de `SchedulePicker` et enregistrement de `scheduled_at` en ISO.
-  - **README** : mise à jour pour indiquer « n8n toutes les 2 h » et créneaux 10h–22h.
-- **État** : OK – côté app, tout est aligné sur ces créneaux.
+- **État** : ✅ OK – côté app, tout est aligné sur ces créneaux.
 
 ---
 
-## 5. Calendrier – Aperçu des posts (forme plateforme)
+## 5. Calendrier – Aperçu des posts
 
-- **Problème** : en vue calendrier (mois/semaine), l’aperçu des posts avant clic était blanc / peu lisible.
-- **Objectif** : voir tout de suite le contenu (texte, photo ou vidéo + description) dans une forme qui rappelle la plateforme (Instagram, Facebook, GMB).
-- **Modifs** :
-  - Nouveau composant `components/posts/PostPreviewCompact.tsx` : mini-cartes type IG / FB / GMB (header, média ou zone texte, caption).
-  - `components/calendar/CalendarEvent.tsx` : en vue **mois** et **semaine**, utilisation de `PostPreviewCompact` (avec `compact={true}`).
-  - Au **clic** sur un post : ouverture du **modal** existant avec l’aperçu détaillé (`PostPreview` + `PostPreviewModal`) – inchangé.
-- **État** : OK – aperçu calendrier = forme plateforme ; clic = modal détaillé.
+- **État** : ✅ OK – aperçu calendrier = forme plateforme ; clic = modal détaillé.
+- Vue mois et semaine avec mini-cartes IG/FB/GMB.
+- Titres des jours en localStorage (pour partage entre users, il faudrait une table Supabase).
 
 ---
 
-## 6. Calendrier – Titres des jours
+## 6. Git et dépôt GitHub
 
-- **Objectif** : pouvoir ajouter un **titre** à chaque jour (ex. thème du jour, campagne).
-- **Comportement** :
-  - Clic sur le **numéro du jour** → champ « Titre du jour » en dessous.
-  - Saisie du titre → **Entrée** ou **clic ailleurs** = enregistrement ; **Échap** = annulation.
-  - Si un titre existe, il s’affiche sous le numéro ; sinon, rien (affichage propre).
-- **Modifs** :
-  - `hooks/useDayTitles.ts` : lecture/écriture des titres en **localStorage** (clé `carmen_calendar_day_titles`).
-  - `components/calendar/CalendarMonth.tsx` et `CalendarWeek.tsx` : numéro cliquable + input titre + affichage du titre.
-- **État** : OK – titres par jour en vue mois et semaine.
-- **Note** : stockage local (navigateur). Pour partage entre utilisateurs / appareils, il faudrait une table Supabase (ex. `calendar_day_titles`) et adapter le hook.
+- **Repo** : `https://github.com/Lucas-code-Sophia/marketing-post-sophia.git`
+- **État** : ✅ OK – push fonctionnel.
 
 ---
 
-## 7. Vue semaine = même aperçu que vue mois
-
-- **Objectif** : en vue **semaine**, avoir le même type d’aperçu que en vue **mois** (cartes forme plateforme).
-- **Modif** : dans `CalendarWeek.tsx`, passage de `compact={true}` aux `CalendarEvent`.
-- **État** : OK – mois et semaine utilisent le même aperçu compact.
+# 🆕 NOUVELLES FONCTIONNALITÉS (Février 2026)
 
 ---
 
-## 8. Git et dépôt GitHub
+## 7. Statistiques Instagram (`/statistiques`)
 
-- **Repo cible** : `https://github.com/Lucas-code-Sophia/marketing-post-sophia.git`
-- **Actions réalisées** :
-  - `git remote set-url origin https://github.com/Lucas-code-Sophia/marketing-post-sophia.git`
-  - `git add -A`
-  - `git commit -m "Calendrier, créneaux 10h-22h, aperçus plateforme, titres jours"`
-  - `git branch -M main`
-  - `git push -u origin main` → **refusé** : permission denied pour l’utilisateur **testcarmenlucas-ux** sur le repo Lucas-code-Sophia.
-- **État** : commit fait en local ; push à refaire une fois les droits OK (soit connexion avec le compte **Lucas-code-Sophia**, soit ajout de **testcarmenlucas-ux** en collaborateur sur le repo).
+### État actuel
+- ✅ Page créée avec affichage des stats du compte
+- ✅ Affichage des variations (7j, 30j, 90j)
+- ✅ Grille des posts style Instagram
+- ✅ Popup avec stats détaillées au clic sur un post
+- ✅ Tables Supabase créées (`instagram_account_stats`, `instagram_post_stats`)
+- ✅ Vue SQL `instagram_stats_with_variations`
 
----
+### ⚠️ Ce qu'il reste à faire
 
-## Récap des fichiers importants modifiés / ajoutés
+| Tâche | Détail |
+|-------|--------|
+| **Importer le workflow n8n stats compte** | Fichier : `docs/n8n/n8n-instagram-stats-daily.json` → importer dans n8n |
+| **Importer le workflow n8n stats posts** | Fichier : `docs/n8n/n8n-instagram-posts-stats.json` → importer dans n8n |
+| **Configurer les credentials n8n** | 1. HTTP Query Auth avec `access_token` = ton token Graph API<br>2. Supabase avec URL + service_role key |
+| **Exécuter les workflows une 1ère fois** | Pour peupler les tables avec les données initiales |
+| **Activer les workflows** | Ils tourneront automatiquement chaque jour (8h et 9h) |
 
-| Fichier | Rôle |
-|--------|------|
-| `.env.local` | Config Supabase (ne pas committer). |
-| `lib/schedule.ts` | Créneaux 10h–22h toutes les 2 h, helpers date/heure. |
-| `components/posts/SchedulePicker.tsx` | Sélecteur date + heure (créneaux autorisés). |
-| `components/posts/PostPreviewCompact.tsx` | Aperçu calendrier en forme IG/FB/GMB. |
-| `hooks/useDayTitles.ts` | Titres des jours (localStorage). |
-| `components/calendar/CalendarEvent.tsx` | Utilise PostPreviewCompact en mois/semaine. |
-| `components/calendar/CalendarMonth.tsx` | Numéro du jour cliquable + titre. |
-| `components/calendar/CalendarWeek.tsx` | Idem + aperçu compact comme en mois. |
-| `app/(authenticated)/posts/new/page.tsx` | SchedulePicker + enregistrement ISO. |
-| `app/(authenticated)/posts/[id]/edit/page.tsx` | Idem. |
-| `app/(authenticated)/validation/page.tsx` | Idem. |
-| `README.md` | n8n toutes les 2 h, créneaux 10h–22h. |
+### Infos techniques
+- **ID Instagram Business** : `17841405211466761` (sophia.capferret)
+- **UUID social_account** : `2c6ce840-8e03-4ddb-926d-97cd215dbac0`
+- **Token Graph API** : à récupérer dans Meta Business Suite (expiration à surveiller)
 
 ---
 
-## Prochaines étapes possibles
+## 8. Templates (`/templates`)
 
-1. **Push GitHub** : régler les droits (compte ou collaborateurs) puis `git push -u origin main`.
-2. **Variables d’env en prod** : `SCHEDULER_API_KEY`, `SUPABASE_SERVICE_ROLE_KEY` si pas encore fait.
-3. **Workflow n8n** : Schedule Trigger toutes les 2 h (ou aux heures 10, 12, 14, 16, 18, 20, 22) vers `POST /api/posts/check-scheduled`.
-4. **Titres des jours partagés** (optionnel) : table Supabase + adaptation de `useDayTitles`.
+### État actuel
+- ✅ Page créée avec upload de visuels
+- ✅ Catégories : Story, Post, Promo, Menu, Événement, Autre
+- ✅ Filtrage par catégorie
+- ✅ Action "Poster en Story Instagram" avec programmation
+- ✅ Table Supabase `templates` créée
 
+### ⚠️ Ce qu'il reste à faire
 
-*Dernière mise à jour : février 2025*
+| Tâche | Détail |
+|-------|--------|
+| **Tester l'upload** | Vérifier que le bucket `medias` accepte les uploads dans le dossier `templates/` |
+| **Ajouter des templates** | Uploader tes premiers visuels pour le restau |
+
+### Fonctionnel
+Cette fonctionnalité est **prête à l'emploi** côté app. Il suffit d'uploader des templates.
+
+---
+
+## 9. Avis Google My Business (`/avis`)
+
+### État actuel
+- ✅ Page créée avec affichage des avis
+- ✅ Stats : note moyenne, distribution étoiles, répondus/en attente
+- ✅ Filtrage tous / en attente
+- ✅ Modal pour rédiger une réponse
+- ✅ Tables Supabase créées (`gmb_reviews`)
+- ✅ Vue SQL `gmb_reviews_summary`
+- ✅ Workflow n8n créé (`n8n-gmb-reviews-sync.json`)
+
+### ⚠️ Ce qu'il reste à faire (plus complexe)
+
+| Tâche | Détail | Difficulté |
+|-------|--------|------------|
+| **Créer un projet Google Cloud** | https://console.cloud.google.com → Nouveau projet | 🟢 Facile |
+| **Activer l'API Business Profile** | APIs & Services → Activer "Google Business Profile API" | 🟢 Facile |
+| **Créer des credentials OAuth2** | Type "Application Web", ajouter les URIs de redirection n8n | 🟡 Moyen |
+| **Récupérer account_id et location_id** | Via l'API ou dans l'interface GMB | 🟡 Moyen |
+| **Configurer le workflow n8n** | Remplacer les placeholders dans `n8n-gmb-reviews-sync.json` | 🟡 Moyen |
+| **Ajouter un compte GMB dans social_accounts** | INSERT avec platform = 'gmb' | 🟢 Facile |
+| **Poster les réponses via API (optionnel)** | Actuellement les réponses sont stockées localement | 🔴 Avancé |
+
+### Comment obtenir les credentials GMB
+
+1. **Google Cloud Console** : https://console.cloud.google.com
+2. **Nouveau projet** → Nom : "Sophia Social Manager"
+3. **APIs & Services** → **Bibliothèque** → Chercher "Business Profile API" → **Activer**
+4. **APIs & Services** → **Credentials** → **Créer des identifiants** → **ID client OAuth**
+   - Type : Application Web
+   - Origines autorisées : `https://ton-instance-n8n.com`
+   - URIs de redirection : `https://ton-instance-n8n.com/rest/oauth2-credential/callback`
+5. **Télécharger le JSON** des credentials
+6. Dans **n8n** : Créer un credential OAuth2 avec client_id et client_secret
+
+### Récupérer account_id et location_id
+
+```bash
+# 1. Lister les comptes
+GET https://mybusinessaccountmanagement.googleapis.com/v1/accounts
+
+# 2. Lister les locations d'un compte
+GET https://mybusinessbusinessinformation.googleapis.com/v1/accounts/{account_id}/locations
+```
+
+---
+
+## 10. Facebook (placeholder)
+
+### État actuel
+- ⏳ Section Facebook présente sur `/statistiques` mais non connectée
+- Les workflows de publication Facebook existent déjà (`n8n-facebook.json`)
+
+### À faire plus tard
+- Créer une table `facebook_page_stats` similaire à Instagram
+- Créer un workflow n8n pour récupérer les stats
+- Connecter sur la page `/statistiques`
+
+---
+
+# 📁 Récap des fichiers n8n
+
+| Fichier | Rôle | Schedule | À configurer |
+|---------|------|----------|--------------|
+| `n8n-instagram-stats-daily.json` | Stats compte IG (followers, etc.) | 8h | HTTP Query Auth + Supabase |
+| `n8n-instagram-posts-stats.json` | Stats des publications IG | 9h | HTTP Query Auth + Supabase |
+| `n8n-gmb-reviews-sync.json` | Sync avis Google | 7h | OAuth2 GMB + Supabase + account_id/location_id |
+| `n8n-instagram.json` | Publication IG | - | Déjà configuré ? |
+| `n8n-facebook.json` | Publication FB | - | Déjà configuré ? |
+
+---
+
+# 📁 Récap des tables Supabase ajoutées
+
+| Table | Rôle |
+|-------|------|
+| `instagram_account_stats` | Stats quotidiennes du compte IG |
+| `instagram_post_stats` | Stats de chaque publication IG |
+| `gmb_reviews` | Avis Google synchronisés |
+| `templates` | Visuels réutilisables |
+
+| Vue | Rôle |
+|-----|------|
+| `instagram_stats_with_variations` | Stats IG + variations 7j/30j/90j |
+| `gmb_reviews_summary` | Résumé des avis (moyenne, distribution) |
+
+---
+
+# ✅ Checklist pour que tout fonctionne
+
+## Immédiat (prêt à utiliser)
+- [x] Posts : création, édition, programmation
+- [x] Calendrier : vue mois/semaine avec aperçus
+- [x] Templates : upload et utilisation
+
+## À configurer (n8n)
+- [ ] Importer `n8n-instagram-stats-daily.json`
+- [ ] Importer `n8n-instagram-posts-stats.json`
+- [ ] Configurer credential HTTP Query Auth (token Graph)
+- [ ] Configurer credential Supabase
+- [ ] Exécuter une première fois les workflows
+- [ ] Activer les workflows
+
+## Plus tard (GMB)
+- [ ] Créer projet Google Cloud
+- [ ] Activer Business Profile API
+- [ ] Créer credentials OAuth2
+- [ ] Récupérer account_id et location_id
+- [ ] Ajouter compte GMB dans social_accounts
+- [ ] Importer et configurer `n8n-gmb-reviews-sync.json`
+
+---
+
+# 🔑 Variables importantes
+
+| Variable | Valeur | Où l'utiliser |
+|----------|--------|---------------|
+| Instagram Business ID | `17841405211466761` | Workflows n8n Instagram |
+| UUID compte Instagram | `2c6ce840-8e03-4ddb-926d-97cd215dbac0` | Workflows n8n Instagram |
+| Token Graph API | (à récupérer) | n8n credential HTTP Query Auth |
+| Supabase URL | (dans .env.local) | n8n credential Supabase |
+| Supabase service_role | (à récupérer) | n8n credential Supabase |
+
+---
+
+*Dernière mise à jour : 5 février 2026*

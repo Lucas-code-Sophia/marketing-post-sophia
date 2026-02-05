@@ -1,0 +1,219 @@
+{
+  "name": "Instagram Posts Stats - Sophia Capferret",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 24,
+              "triggerAtHour": 9
+            }
+          ]
+        }
+      },
+      "id": "schedule-trigger",
+      "name": "Tous les jours à 9h",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [0, 0]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "https://graph.facebook.com/v21.0/17841405211466761/media",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpQueryAuth",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "fields",
+              "value": "id,media_type,permalink,caption,timestamp,like_count,comments_count"
+            },
+            {
+              "name": "limit",
+              "value": "50"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "http-get-media",
+      "name": "GET All Media",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [220, 0],
+      "credentials": {
+        "httpQueryAuth": {
+          "id": "REMPLACER_PAR_ID_CREDENTIAL",
+          "name": "Graph API Token"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Extraire les posts du résultat\nconst posts = $input.first().json.data || [];\nreturn posts.map(post => ({ json: post }));"
+      },
+      "id": "code-split-posts",
+      "name": "Split Posts",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [440, 0]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "=https://graph.facebook.com/v21.0/{{ $json.id }}/insights",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpQueryAuth",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "metric",
+              "value": "impressions,reach,saved,shares"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          }
+        }
+      },
+      "id": "http-get-insights",
+      "name": "GET Post Insights",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [660, 0],
+      "credentials": {
+        "httpQueryAuth": {
+          "id": "REMPLACER_PAR_ID_CREDENTIAL",
+          "name": "Graph API Token"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Combiner les données du post avec ses insights\nconst post = $('Split Posts').item.json;\nconst insightsResponse = $input.first().json;\n\n// Extraire les insights (peut être vide pour certains posts)\nlet impressions = null, reach = null, saved = null, shares = null;\n\nif (insightsResponse.data) {\n  for (const metric of insightsResponse.data) {\n    if (metric.name === 'impressions') impressions = metric.values[0]?.value;\n    if (metric.name === 'reach') reach = metric.values[0]?.value;\n    if (metric.name === 'saved') saved = metric.values[0]?.value;\n    if (metric.name === 'shares') shares = metric.values[0]?.value;\n  }\n}\n\nreturn [{\n  json: {\n    social_account_id: '2c6ce840-8e03-4ddb-926d-97cd215dbac0',\n    media_id: post.id,\n    media_type: post.media_type,\n    permalink: post.permalink,\n    caption: post.caption ? post.caption.substring(0, 500) : null,\n    timestamp: post.timestamp,\n    likes: post.like_count,\n    comments: post.comments_count,\n    impressions: impressions,\n    reach: reach,\n    saved: saved,\n    shares: shares,\n    engagement: (post.like_count || 0) + (post.comments_count || 0) + (saved || 0) + (shares || 0)\n  }\n}];"
+      },
+      "id": "code-merge-data",
+      "name": "Merge Post + Insights",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [880, 0]
+    },
+    {
+      "parameters": {
+        "operation": "upsert",
+        "schema": {
+          "__rl": true,
+          "mode": "list",
+          "value": "public"
+        },
+        "table": {
+          "__rl": true,
+          "mode": "list",
+          "value": "instagram_post_stats"
+        },
+        "conflictFields": ["media_id"],
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "social_account_id": "={{ $json.social_account_id }}",
+            "media_id": "={{ $json.media_id }}",
+            "media_type": "={{ $json.media_type }}",
+            "permalink": "={{ $json.permalink }}",
+            "caption": "={{ $json.caption }}",
+            "timestamp": "={{ $json.timestamp }}",
+            "likes": "={{ $json.likes }}",
+            "comments": "={{ $json.comments }}",
+            "impressions": "={{ $json.impressions }}",
+            "reach": "={{ $json.reach }}",
+            "saved": "={{ $json.saved }}",
+            "shares": "={{ $json.shares }}",
+            "engagement": "={{ $json.engagement }}",
+            "fetched_at": "={{ $now.toISO() }}",
+            "updated_at": "={{ $now.toISO() }}"
+          }
+        },
+        "options": {}
+      },
+      "id": "supabase-upsert",
+      "name": "Upsert Supabase",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [1100, 0],
+      "credentials": {
+        "supabaseApi": {
+          "id": "REMPLACER_PAR_ID_CREDENTIAL_SUPABASE",
+          "name": "Supabase Carmen"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Tous les jours à 9h": {
+      "main": [
+        [
+          {
+            "node": "GET All Media",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GET All Media": {
+      "main": [
+        [
+          {
+            "node": "Split Posts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Posts": {
+      "main": [
+        [
+          {
+            "node": "GET Post Insights",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GET Post Insights": {
+      "main": [
+        [
+          {
+            "node": "Merge Post + Insights",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge Post + Insights": {
+      "main": [
+        [
+          {
+            "node": "Upsert Supabase",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}
