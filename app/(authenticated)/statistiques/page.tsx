@@ -1,14 +1,31 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
 import { 
   Dialog, 
   DialogContent, 
   DialogHeader, 
   DialogTitle 
 } from '@/components/ui/dialog'
-import { Instagram, Facebook, TrendingUp, TrendingDown, Minus, Heart, MessageCircle, Bookmark, Share2, Eye, Users, Loader2 } from 'lucide-react'
+import {
+  Instagram,
+  Facebook,
+  TrendingUp,
+  TrendingDown,
+  Minus,
+  Heart,
+  MessageCircle,
+  Bookmark,
+  Share2,
+  Eye,
+  Users,
+  Loader2,
+  Image as ImageIcon,
+  ExternalLink,
+  BarChart3,
+} from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 
 interface AccountStats {
@@ -26,15 +43,80 @@ interface PostStats {
   media_id: string
   media_type: string
   permalink: string
+  media_url?: string | null
+  thumbnail_url?: string | null
   caption: string | null
   timestamp: string
   likes: number | null
   comments: number | null
+  views: number | null
   impressions: number | null
   reach: number | null
   saved: number | null
   shares: number | null
   engagement: number | null
+}
+
+interface PostStatsHistory {
+  media_id: string
+  fetched_at: string
+  likes: number | null
+  comments: number | null
+  views: number | null
+  reach: number | null
+  saved: number | null
+  shares: number | null
+  engagement: number | null
+}
+
+type EngagementSort = 'recent' | 'engagement_desc' | 'engagement_asc'
+type EngagementFilter = 'all' | 'high' | 'medium' | 'low'
+type HistoryRange = '7d' | '30d' | '90d' | 'all'
+
+function toNumber(value: number | string | null | undefined): number {
+  if (value === null || value === undefined) return 0
+  if (typeof value === 'number') return Number.isFinite(value) ? value : 0
+  const parsed = Number(value)
+  return Number.isFinite(parsed) ? parsed : 0
+}
+
+function getViewsValue(post: PostStats): number | null {
+  if (post.views !== null && post.views !== undefined) return toNumber(post.views)
+  if (post.impressions !== null && post.impressions !== undefined) return toNumber(post.impressions)
+  return null
+}
+
+function getHistoryViewsValue(snapshot: PostStatsHistory | null): number | null {
+  if (!snapshot) return null
+  if (snapshot.views !== null && snapshot.views !== undefined) return toNumber(snapshot.views)
+  return null
+}
+
+function getInstagramPreviewUrl(permalink: string | null): string | null {
+  if (!permalink) return null
+
+  try {
+    const url = new URL(permalink)
+    const parts = url.pathname.split('/').filter(Boolean)
+    if (parts.length < 2) return null
+
+    const [kind, shortcode] = parts
+    if (!['p', 'reel', 'tv'].includes(kind)) return null
+
+    return `https://www.instagram.com/${kind}/${shortcode}/media/?size=l`
+  } catch {
+    return null
+  }
+}
+
+function getPostPreviewUrl(post: PostStats): string | null {
+  const thumbnail = post.thumbnail_url?.trim()
+  const media = post.media_url?.trim()
+
+  if (thumbnail) return thumbnail
+  if (media) return media
+
+  return getInstagramPreviewUrl(post.permalink)
 }
 
 function VariationBadge({ value, period }: { value: number | null, period: string }) {
@@ -65,18 +147,28 @@ function VariationBadge({ value, period }: { value: number | null, period: strin
 }
 
 function PostThumbnail({ post, onClick }: { post: PostStats, onClick: () => void }) {
-  // Extraire l'image du post depuis l'URL Instagram ou utiliser un placeholder
-  const thumbnailUrl = `https://instagram.com/p/${post.media_id}/media/?size=m`
+  const [imageError, setImageError] = useState(false)
+  const previewUrl = getPostPreviewUrl(post)
+  const canShowImage = Boolean(previewUrl) && !imageError
   
   return (
     <div 
       className="relative aspect-square cursor-pointer group overflow-hidden rounded-md bg-gray-100"
       onClick={onClick}
     >
-      {/* Placeholder avec icône */}
-      <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-pink-100 to-purple-100">
-        <Instagram className="h-8 w-8 text-pink-300" />
-      </div>
+      {canShowImage ? (
+        <img
+          src={previewUrl!}
+          alt="Aperçu du post Instagram"
+          className="h-full w-full object-cover"
+          loading="lazy"
+          onError={() => setImageError(true)}
+        />
+      ) : (
+        <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-pink-100 to-purple-100">
+          <Instagram className="h-8 w-8 text-pink-300" />
+        </div>
+      )}
       
       {/* Overlay au hover avec stats */}
       <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-4 text-white">
@@ -105,7 +197,92 @@ function PostThumbnail({ post, onClick }: { post: PostStats, onClick: () => void
   )
 }
 
-function PostStatsModal({ post, open, onClose }: { post: PostStats | null, open: boolean, onClose: () => void }) {
+function MetricDelta({ label, value }: { label: string; value: number | null }) {
+  if (value === null) {
+    return (
+      <div className="rounded-md border bg-gray-50 px-3 py-2 text-xs text-gray-500">
+        {label}: —
+      </div>
+    )
+  }
+
+  if (value > 0) {
+    return (
+      <div className="rounded-md border border-green-200 bg-green-50 px-3 py-2 text-xs text-green-700">
+        {label}: +{value.toLocaleString()}
+      </div>
+    )
+  }
+
+  if (value < 0) {
+    return (
+      <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
+        {label}: {value.toLocaleString()}
+      </div>
+    )
+  }
+
+  return (
+    <div className="rounded-md border bg-gray-50 px-3 py-2 text-xs text-gray-500">
+      {label}: 0
+    </div>
+  )
+}
+
+function EngagementSparkline({ values }: { values: number[] }) {
+  if (values.length < 2) {
+    return (
+      <div className="rounded-md bg-gray-50 p-3 text-xs text-gray-500">
+        Pas assez d'historique pour afficher l'évolution.
+      </div>
+    )
+  }
+
+  const max = Math.max(...values)
+  const min = Math.min(...values)
+  const points = values
+    .map((value, index) => {
+      const x = (index / (values.length - 1)) * 100
+      const y = max === min ? 50 : 100 - ((value - min) / (max - min)) * 100
+      return `${x},${y}`
+    })
+    .join(' ')
+
+  return (
+    <div className="rounded-md border bg-white p-3">
+      <svg viewBox="0 0 100 100" className="h-28 w-full">
+        <polyline
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="3"
+          points={points}
+          className="text-pink-500"
+        />
+      </svg>
+      <div className="mt-2 flex items-center justify-between text-xs text-gray-500">
+        <span>Plus ancien</span>
+        <span>Plus récent</span>
+      </div>
+    </div>
+  )
+}
+
+function PostStatsModal({
+  post,
+  posts,
+  history,
+  historyLoading,
+  open,
+  onClose,
+}: {
+  post: PostStats | null
+  posts: PostStats[]
+  history: PostStatsHistory[]
+  historyLoading: boolean
+  open: boolean
+  onClose: () => void
+}) {
+  const [historyRange, setHistoryRange] = useState<HistoryRange>('30d')
   if (!post) return null
   
   const publishedDate = new Date(post.timestamp).toLocaleDateString('fr-FR', {
@@ -113,10 +290,71 @@ function PostStatsModal({ post, open, onClose }: { post: PostStats | null, open:
     month: 'long',
     year: 'numeric'
   })
+  const previewUrl = getPostPreviewUrl(post)
+  const views = getViewsValue(post)
+
+  const orderedPosts = [...posts].sort(
+    (a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+  )
+  const postIndex = orderedPosts.findIndex((item) => item.media_id === post.media_id)
+  const previousPost = postIndex > 0 ? orderedPosts[postIndex - 1] : null
+  const fallbackEvolutionSample =
+    postIndex >= 0 ? orderedPosts.slice(Math.max(0, postIndex - 7), postIndex + 1) : []
+  const fallbackEngagementSeries = fallbackEvolutionSample.map((item) => toNumber(item.engagement))
+
+  const orderedHistory = [...history].sort(
+    (a, b) => new Date(a.fetched_at).getTime() - new Date(b.fetched_at).getTime()
+  )
+  const now = Date.now()
+  const rangeMsByType: Record<Exclude<HistoryRange, 'all'>, number> = {
+    '7d': 7 * 24 * 60 * 60 * 1000,
+    '30d': 30 * 24 * 60 * 60 * 1000,
+    '90d': 90 * 24 * 60 * 60 * 1000,
+  }
+  const historyInRange =
+    historyRange === 'all'
+      ? orderedHistory
+      : orderedHistory.filter(
+          (item) => now - new Date(item.fetched_at).getTime() <= rangeMsByType[historyRange]
+        )
+
+  const hasHistory = historyInRange.length > 0
+  const latestHistory = hasHistory ? historyInRange[historyInRange.length - 1] : null
+  const previousHistory = historyInRange.length > 1 ? historyInRange[historyInRange.length - 2] : null
+
+  const fallbackEngagementDelta = previousPost
+    ? toNumber(post.engagement) - toNumber(previousPost.engagement)
+    : null
+  const fallbackReachDelta = previousPost ? toNumber(post.reach) - toNumber(previousPost.reach) : null
+  const fallbackViewsDelta = previousPost
+    ? toNumber(getViewsValue(post)) - toNumber(getViewsValue(previousPost))
+    : null
+
+  const engagementDelta = previousHistory
+    ? toNumber(latestHistory?.engagement) - toNumber(previousHistory.engagement)
+    : fallbackEngagementDelta
+  const reachDelta = previousHistory
+    ? toNumber(latestHistory?.reach) - toNumber(previousHistory.reach)
+    : fallbackReachDelta
+  const viewsDelta = previousHistory
+    ? toNumber(getHistoryViewsValue(latestHistory)) - toNumber(getHistoryViewsValue(previousHistory))
+    : fallbackViewsDelta
+
+  const engagementSeries = hasHistory
+    ? historyInRange.map((item) => toNumber(item.engagement))
+    : fallbackEngagementSeries
+
+  const displayLikes = latestHistory?.likes ?? post.likes
+  const displayComments = latestHistory?.comments ?? post.comments
+  const displaySaved = latestHistory?.saved ?? post.saved
+  const displayShares = latestHistory?.shares ?? post.shares
+  const displayReach = latestHistory?.reach ?? post.reach
+  const displayEngagement = latestHistory?.engagement ?? post.engagement
+  const displayViews = hasHistory ? getHistoryViewsValue(latestHistory) : views
   
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-lg">
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Instagram className="h-5 w-5 text-pink-500" />
@@ -125,6 +363,22 @@ function PostStatsModal({ post, open, onClose }: { post: PostStats | null, open:
         </DialogHeader>
         
         <div className="space-y-4">
+          {/* Aperçu visuel */}
+          <div className="overflow-hidden rounded-lg border bg-gray-50">
+            {previewUrl ? (
+              <img
+                src={previewUrl}
+                alt="Aperçu du post"
+                className="max-h-[420px] w-full object-cover"
+                loading="lazy"
+              />
+            ) : (
+              <div className="flex h-52 items-center justify-center bg-gradient-to-br from-pink-100 to-purple-100">
+                <ImageIcon className="h-10 w-10 text-pink-300" />
+              </div>
+            )}
+          </div>
+
           {/* Date et type */}
           <div className="flex items-center justify-between text-sm text-muted-foreground">
             <span>Publié le {publishedDate}</span>
@@ -133,7 +387,7 @@ function PostStatsModal({ post, open, onClose }: { post: PostStats | null, open:
           
           {/* Caption */}
           {post.caption && (
-            <p className="text-sm text-gray-700 line-clamp-3 bg-gray-50 p-3 rounded-lg">
+            <p className="text-sm text-gray-700 whitespace-pre-wrap break-words bg-gray-50 p-3 rounded-lg">
               {post.caption}
             </p>
           )}
@@ -143,7 +397,7 @@ function PostStatsModal({ post, open, onClose }: { post: PostStats | null, open:
             <div className="flex items-center gap-3 p-3 rounded-lg bg-pink-50">
               <Heart className="h-5 w-5 text-pink-500" />
               <div>
-                <p className="text-lg font-bold">{post.likes?.toLocaleString() || '—'}</p>
+                <p className="text-lg font-bold">{displayLikes?.toLocaleString() || '—'}</p>
                 <p className="text-xs text-muted-foreground">Likes</p>
               </div>
             </div>
@@ -151,7 +405,7 @@ function PostStatsModal({ post, open, onClose }: { post: PostStats | null, open:
             <div className="flex items-center gap-3 p-3 rounded-lg bg-blue-50">
               <MessageCircle className="h-5 w-5 text-blue-500" />
               <div>
-                <p className="text-lg font-bold">{post.comments?.toLocaleString() || '—'}</p>
+                <p className="text-lg font-bold">{displayComments?.toLocaleString() || '—'}</p>
                 <p className="text-xs text-muted-foreground">Commentaires</p>
               </div>
             </div>
@@ -159,7 +413,7 @@ function PostStatsModal({ post, open, onClose }: { post: PostStats | null, open:
             <div className="flex items-center gap-3 p-3 rounded-lg bg-yellow-50">
               <Bookmark className="h-5 w-5 text-yellow-600" />
               <div>
-                <p className="text-lg font-bold">{post.saved?.toLocaleString() || '—'}</p>
+                <p className="text-lg font-bold">{displaySaved?.toLocaleString() || '—'}</p>
                 <p className="text-xs text-muted-foreground">Enregistrements</p>
               </div>
             </div>
@@ -167,7 +421,7 @@ function PostStatsModal({ post, open, onClose }: { post: PostStats | null, open:
             <div className="flex items-center gap-3 p-3 rounded-lg bg-green-50">
               <Share2 className="h-5 w-5 text-green-600" />
               <div>
-                <p className="text-lg font-bold">{post.shares?.toLocaleString() || '—'}</p>
+                <p className="text-lg font-bold">{displayShares?.toLocaleString() || '—'}</p>
                 <p className="text-xs text-muted-foreground">Partages</p>
               </div>
             </div>
@@ -178,15 +432,15 @@ function PostStatsModal({ post, open, onClose }: { post: PostStats | null, open:
             <div className="flex items-center gap-3 p-3 rounded-lg bg-purple-50">
               <Eye className="h-5 w-5 text-purple-500" />
               <div>
-                <p className="text-lg font-bold">{post.impressions?.toLocaleString() || '—'}</p>
-                <p className="text-xs text-muted-foreground">Impressions</p>
+                <p className="text-lg font-bold">{displayViews?.toLocaleString() || '—'}</p>
+                <p className="text-xs text-muted-foreground">Vues</p>
               </div>
             </div>
             
             <div className="flex items-center gap-3 p-3 rounded-lg bg-indigo-50">
               <Users className="h-5 w-5 text-indigo-500" />
               <div>
-                <p className="text-lg font-bold">{post.reach?.toLocaleString() || '—'}</p>
+                <p className="text-lg font-bold">{displayReach?.toLocaleString() || '—'}</p>
                 <p className="text-xs text-muted-foreground">Portée</p>
               </div>
             </div>
@@ -194,8 +448,47 @@ function PostStatsModal({ post, open, onClose }: { post: PostStats | null, open:
           
           {/* Engagement total */}
           <div className="p-4 rounded-lg bg-gradient-to-r from-pink-500 to-purple-500 text-white text-center">
-            <p className="text-2xl font-bold">{post.engagement?.toLocaleString() || '—'}</p>
+            <p className="text-2xl font-bold">{displayEngagement?.toLocaleString() || '—'}</p>
             <p className="text-sm opacity-90">Engagement total</p>
+          </div>
+
+          {/* Evolution */}
+          <div className="space-y-3 rounded-lg border p-4">
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+              <BarChart3 className="h-4 w-4 text-pink-500" />
+              <p className="text-sm font-semibold">
+                {hasHistory ? 'Évolution (vs snapshot précédent)' : 'Évolution (vs post précédent)'}
+              </p>
+              </div>
+              <select
+                value={historyRange}
+                onChange={(e) => setHistoryRange(e.target.value as HistoryRange)}
+                className="h-8 rounded-md border border-input bg-background px-2 text-xs"
+              >
+                <option value="7d">7 jours</option>
+                <option value="30d">30 jours</option>
+                <option value="90d">90 jours</option>
+                <option value="all">Tout</option>
+              </select>
+            </div>
+            {historyLoading && (
+              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                Chargement de l'historique...
+              </div>
+            )}
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+              <MetricDelta label="Engagement" value={engagementDelta} />
+              <MetricDelta label="Portée" value={reachDelta} />
+              <MetricDelta label="Vues" value={viewsDelta} />
+            </div>
+            <EngagementSparkline values={engagementSeries} />
+            {hasHistory && (
+              <p className="text-xs text-muted-foreground">
+                {historyInRange.length} snapshots sur la période ({historyRange === 'all' ? 'tout' : historyRange}).
+              </p>
+            )}
           </div>
           
           {/* Lien vers Instagram */}
@@ -204,8 +497,9 @@ function PostStatsModal({ post, open, onClose }: { post: PostStats | null, open:
               href={post.permalink} 
               target="_blank" 
               rel="noopener noreferrer"
-              className="block text-center text-sm text-pink-600 hover:underline"
+              className="flex items-center justify-center gap-1 text-sm text-pink-600 hover:underline"
             >
+              <ExternalLink className="h-3.5 w-3.5" />
               Voir sur Instagram →
             </a>
           )}
@@ -223,6 +517,10 @@ export default function StatistiquesPage() {
   const [posts, setPosts] = useState<PostStats[]>([])
   const [selectedPost, setSelectedPost] = useState<PostStats | null>(null)
   const [modalOpen, setModalOpen] = useState(false)
+  const [historyLoading, setHistoryLoading] = useState(false)
+  const [historyByMediaId, setHistoryByMediaId] = useState<Record<string, PostStatsHistory[]>>({})
+  const [engagementSort, setEngagementSort] = useState<EngagementSort>('recent')
+  const [engagementFilter, setEngagementFilter] = useState<EngagementFilter>('all')
 
   useEffect(() => {
     fetchData()
@@ -258,6 +556,64 @@ export default function StatistiquesPage() {
     setSelectedPost(post)
     setModalOpen(true)
   }
+
+  useEffect(() => {
+    if (!modalOpen || !selectedPost?.media_id) return
+
+    const mediaId = selectedPost.media_id
+    if (historyByMediaId[mediaId]) return
+
+    let cancelled = false
+    const fetchHistory = async () => {
+      setHistoryLoading(true)
+      try {
+        const { data } = await supabase
+          .from('instagram_post_stats_history')
+          .select('media_id,fetched_at,likes,comments,views,reach,saved,shares,engagement')
+          .eq('media_id', mediaId)
+          .order('fetched_at', { ascending: true })
+
+        if (cancelled) return
+        setHistoryByMediaId((prev) => ({
+          ...prev,
+          [mediaId]: (data as PostStatsHistory[] | null) || [],
+        }))
+      } finally {
+        if (!cancelled) setHistoryLoading(false)
+      }
+    }
+
+    fetchHistory()
+
+    return () => {
+      cancelled = true
+    }
+  }, [modalOpen, selectedPost?.media_id, historyByMediaId])
+
+  const displayedPosts = useMemo(() => {
+    const list = [...posts]
+
+    const filtered = list.filter((post) => {
+      const score = toNumber(post.engagement)
+
+      if (engagementFilter === 'high') return score >= 100
+      if (engagementFilter === 'medium') return score >= 30 && score < 100
+      if (engagementFilter === 'low') return score < 30
+      return true
+    })
+
+    if (engagementSort === 'engagement_desc') {
+      filtered.sort((a, b) => toNumber(b.engagement) - toNumber(a.engagement))
+    } else if (engagementSort === 'engagement_asc') {
+      filtered.sort((a, b) => toNumber(a.engagement) - toNumber(b.engagement))
+    } else {
+      filtered.sort(
+        (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+      )
+    }
+
+    return filtered
+  }, [posts, engagementFilter, engagementSort])
 
   if (loading) {
     return (
@@ -353,15 +709,63 @@ export default function StatistiquesPage() {
       {/* Grille des posts Instagram */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <TrendingUp className="h-5 w-5 text-green-600" />
-            Performances des posts
-          </CardTitle>
+          <div className="flex flex-col gap-3">
+            <CardTitle className="flex items-center gap-2">
+              <TrendingUp className="h-5 w-5 text-green-600" />
+              Performances des posts
+            </CardTitle>
+
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  size="sm"
+                  variant={engagementFilter === 'all' ? 'default' : 'outline'}
+                  onClick={() => setEngagementFilter('all')}
+                >
+                  Tous
+                </Button>
+                <Button
+                  size="sm"
+                  variant={engagementFilter === 'high' ? 'default' : 'outline'}
+                  onClick={() => setEngagementFilter('high')}
+                >
+                  Top (100+)
+                </Button>
+                <Button
+                  size="sm"
+                  variant={engagementFilter === 'medium' ? 'default' : 'outline'}
+                  onClick={() => setEngagementFilter('medium')}
+                >
+                  Moyen (30-99)
+                </Button>
+                <Button
+                  size="sm"
+                  variant={engagementFilter === 'low' ? 'default' : 'outline'}
+                  onClick={() => setEngagementFilter('low')}
+                >
+                  Faible (&lt;30)
+                </Button>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-muted-foreground">Trier:</span>
+                <select
+                  value={engagementSort}
+                  onChange={(e) => setEngagementSort(e.target.value as EngagementSort)}
+                  className="h-9 rounded-md border border-input bg-background px-3 text-sm"
+                >
+                  <option value="recent">Plus récents</option>
+                  <option value="engagement_desc">Engagement décroissant</option>
+                  <option value="engagement_asc">Engagement croissant</option>
+                </select>
+              </div>
+            </div>
+          </div>
         </CardHeader>
         <CardContent>
-          {posts.length > 0 ? (
-            <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-2">
-              {posts.map((post) => (
+          {displayedPosts.length > 0 ? (
+            <div className="grid grid-cols-3 gap-3">
+              {displayedPosts.map((post) => (
                 <PostThumbnail 
                   key={post.id} 
                   post={post} 
@@ -374,7 +778,7 @@ export default function StatistiquesPage() {
               <Instagram className="h-12 w-12 mx-auto mb-2 opacity-50" />
               <p className="font-medium">Aucun post pour le moment</p>
               <p className="text-sm mt-1">
-                Les stats des posts seront récupérées automatiquement chaque jour
+                Essaie un autre filtre d'engagement ou attends la prochaine synchronisation.
               </p>
             </div>
           )}
@@ -384,6 +788,9 @@ export default function StatistiquesPage() {
       {/* Modal des stats du post */}
       <PostStatsModal 
         post={selectedPost} 
+        posts={posts}
+        history={selectedPost ? historyByMediaId[selectedPost.media_id] || [] : []}
+        historyLoading={historyLoading}
         open={modalOpen} 
         onClose={() => setModalOpen(false)} 
       />

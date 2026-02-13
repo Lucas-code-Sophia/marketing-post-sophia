@@ -84,7 +84,7 @@ export function Sidebar({ userRole }: SidebarProps) {
         <div className="flex flex-col h-full">
           {/* Logo */}
           <div className="flex items-center h-16 px-6 border-b">
-            <span className="text-xl font-bold text-primary">Carmen Social</span>
+            <span className="text-xl font-bold text-primary">SOPHIA Socials</span>
           </div>
 
           {/* Navigation principale */}

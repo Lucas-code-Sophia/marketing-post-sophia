@@ -6,7 +6,7 @@ const tickets = [
     title: 'Ticket de caisse classique',
     subtitle: 'Impression client – récapitulatif complet',
     preview: [
-      'CARMEN SOCIAL - RESTAURANT',
+      'SOPHIA SOCIALS - RESTAURANT',
       '--------------------------------',
       'Table: 12   Serveur: LUCAS',
       'Date: 2026-02-06  20:14',

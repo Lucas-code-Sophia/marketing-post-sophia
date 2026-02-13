@@ -3,7 +3,7 @@
 import { useState, useCallback, useEffect } from 'react'
 import { format } from 'date-fns'
 
-const STORAGE_KEY = 'carmen_calendar_day_titles'
+const STORAGE_KEY = 'sophia_socials_calendar_day_titles'
 
 function getStored(): Record<string, string> {
   if (typeof window === 'undefined') return {}

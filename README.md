@@ -1,6 +1,6 @@
-# Carmen Social Media Manager
+# SOPHIA Socials
 
-Application interne pour gérer les publications sur les réseaux sociaux (Facebook, Instagram) pour le réseau d'agences Carmen Immobilier.
+Application interne pour gérer les publications sur les réseaux sociaux (Facebook, Instagram) pour Sophia Cap Ferret.
 
 ## Stack technique
 
@@ -16,7 +16,7 @@ Application interne pour gérer les publications sur les réseaux sociaux (Faceb
 ### 1. Cloner et installer les dépendances
 
 ```bash
-cd carmen-social-manager
+cd sophia-socials-manager
 npm install
 ```
 
@@ -122,7 +122,7 @@ Les tables Supabase doivent être créées au préalable :
 - `social_accounts` - Comptes FB/IG connectés
 - `posts` - Publications
 - `media` - Fichiers uploadés
-- `agencies` - Agences Carmen
+- `agencies` - Entités Sophia
 
 ## Développement
 
@@ -143,4 +143,4 @@ npm start
 
 ## Support
 
-Pour toute question, contacter l'équipe technique Carmen.
+Pour toute question, contacter l'équipe technique SOPHIA Socials.

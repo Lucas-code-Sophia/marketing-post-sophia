@@ -15,7 +15,7 @@ export default async function SocialAccountsPage() {
       <div>
         <h1 className="text-2xl font-bold">Comptes sociaux</h1>
         <p className="text-muted-foreground">
-          Gérez les comptes Facebook et Instagram connectés (modifier ou supprimer les comptes de test).
+          Gérez les comptes Facebook, Instagram et Google Business Profile connectés.
         </p>
       </div>
 

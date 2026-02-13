@@ -1,4 +1,4 @@
-# Note de suivi – Carmen Social Manager (marketing-post-sophia)
+# Note de suivi – SOPHIA Socials (marketing-post-sophia)
 
 Document de référence pour savoir où on en est sur le projet. À mettre à jour à chaque grosse évolution.
 
@@ -7,7 +7,7 @@ Document de référence pour savoir où on en est sur le projet. À mettre à jo
 ## 1. Démarrage du projet
 
 - **Problème** : la commande `next` n'était pas reconnue.
-- **Action** : `npm install` dans `carmen-social-manager` pour installer les dépendances (Next.js, Supabase, etc.).
+- **Action** : `npm install` dans `sophia-socials-manager` pour installer les dépendances (Next.js, Supabase, etc.).
 - **État** : ✅ OK – le projet peut être lancé avec `npm run dev`.
 
 ---
@@ -140,7 +140,7 @@ Cette fonctionnalité est **prête à l'emploi** côté app. Il suffit d'uploade
 ### Comment obtenir les credentials GMB
 
 1. **Google Cloud Console** : https://console.cloud.google.com
-2. **Nouveau projet** → Nom : "Sophia Social Manager"
+2. **Nouveau projet** → Nom : "SOPHIA Socials"
 3. **APIs & Services** → **Bibliothèque** → Chercher "Business Profile API" → **Activer**
 4. **APIs & Services** → **Credentials** → **Créer des identifiants** → **ID client OAuth**
    - Type : Application Web

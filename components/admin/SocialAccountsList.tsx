@@ -178,7 +178,7 @@ export function SocialAccountsList({ accounts: initialAccounts }: SocialAccounts
                 id="edit_name"
                 value={editName}
                 onChange={(e) => setEditName(e.target.value)}
-                placeholder="Ex: Carmen Immobilier"
+                placeholder="Ex: Sophia Cap Ferret"
               />
             </div>
             <div className="grid gap-2">
