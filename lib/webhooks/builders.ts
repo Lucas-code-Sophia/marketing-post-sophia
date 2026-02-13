@@ -1,19 +1,24 @@
 import type { Post, SocialAccount, MediaItem, UserTag } from '@/types'
 
+const N8N_WEBHOOK_BASE_URL =
+  process.env.N8N_WEBHOOK_BASE_URL?.replace(/\/+$/, '') ||
+  'https://n8n.srv1367878.hstgr.cloud'
+
 // Mapping des webhooks n8n selon plateforme et type
 export const WEBHOOK_URLS = {
   instagram: {
-    image: 'https://hetzi.app.n8n.cloud/webhook/instagram-post-image',
-    carrousel: 'https://hetzi.app.n8n.cloud/webhook/instagram-post-carrousel',
-    stories: 'https://hetzi.app.n8n.cloud/webhook/instagram-post-stories',
-    reel: 'https://hetzi.app.n8n.cloud/webhook/instagram-post-reels',
+    image: `${N8N_WEBHOOK_BASE_URL}/webhook/instagram-post-image`,
+    carrousel: `${N8N_WEBHOOK_BASE_URL}/webhook/instagram-post-carrousel`,
+    story: `${N8N_WEBHOOK_BASE_URL}/webhook/instagram-post-stories`,
+    stories: `${N8N_WEBHOOK_BASE_URL}/webhook/instagram-post-stories`,
+    reel: `${N8N_WEBHOOK_BASE_URL}/webhook/instagram-post-reels`,
   },
   facebook: {
-    text: 'https://hetzi.app.n8n.cloud/webhook/facebook-post-texte',
-    image: 'https://hetzi.app.n8n.cloud/webhook/facebook-post-image',
-    video: 'https://hetzi.app.n8n.cloud/webhook/facebook-post-video',
-    carrousel: 'https://hetzi.app.n8n.cloud/webhook/facebook-post-carrousel',
-    link: 'https://hetzi.app.n8n.cloud/webhook/facebook-post-linkpreview',
+    text: `${N8N_WEBHOOK_BASE_URL}/webhook/facebook-post-texte`,
+    image: `${N8N_WEBHOOK_BASE_URL}/webhook/facebook-post-image`,
+    video: `${N8N_WEBHOOK_BASE_URL}/webhook/facebook-post-video`,
+    carrousel: `${N8N_WEBHOOK_BASE_URL}/webhook/facebook-post-carrousel`,
+    link: `${N8N_WEBHOOK_BASE_URL}/webhook/facebook-post-linkpreview`,
   },
 } as const
 
@@ -25,6 +30,11 @@ export function buildInstagramBody(
   socialAccount: SocialAccount
 ): { url: string; body: Record<string, any> } {
   const { post_type, caption, medias, location_id, user_tags } = post
+  const accessToken = socialAccount.access_token?.trim()
+
+  if (!accessToken) {
+    throw new Error('Access token Instagram manquant pour ce compte social')
+  }
 
   let url: string
   let body: Record<string, any> = {}
@@ -53,8 +63,9 @@ export function buildInstagramBody(
       if (user_tags && user_tags.length > 0) body.user_tags = user_tags
       break
 
+    case 'story':
     case 'stories':
-      url = WEBHOOK_URLS.instagram.stories
+      url = WEBHOOK_URLS.instagram.story
       const storyMedia = medias?.[0]
       body = {
         url: storyMedia?.url || '',
@@ -75,6 +86,8 @@ export function buildInstagramBody(
       throw new Error(`Type de post Instagram non supporté: ${post_type}`)
   }
 
+  body.access_token = accessToken
+
   return { url, body }
 }
 
@@ -86,6 +99,11 @@ export function buildFacebookBody(
   socialAccount: SocialAccount
 ): { url: string; body: Record<string, any> } {
   const { post_type, caption, medias, link, location_id } = post
+  const accessToken = socialAccount.access_token?.trim()
+
+  if (!accessToken) {
+    throw new Error('Access token Facebook manquant pour ce compte social')
+  }
 
   let url: string
   let body: Record<string, any> = {}
@@ -143,6 +161,8 @@ export function buildFacebookBody(
     default:
       throw new Error(`Type de post Facebook non supporté: ${post_type}`)
   }
+
+  body.access_token = accessToken
 
   return { url, body }
 }

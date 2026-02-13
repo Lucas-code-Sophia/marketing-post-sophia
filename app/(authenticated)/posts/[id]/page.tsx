@@ -36,7 +36,7 @@ export default async function PostDetailPage({
     .single()
 
   const canPublish = userData?.role === 'manager' || userData?.role === 'admin'
-  const canPublishNow = canPublish && (post.status === 'scheduled' || post.status === 'pending_validation')
+  const canPublishNow = canPublish && post.status !== 'publishing'
   
   // Permissions pour modifier
   const isOwner = post.created_by === user?.id
@@ -70,7 +70,11 @@ export default async function PostDetailPage({
             <div>
               <CardTitle>{post.platform} - {post.post_type}</CardTitle>
               <p className="text-sm text-muted-foreground">
-                Créé le {formatDate(post.created_at)}
+                {post.scheduled_at
+                  ? `Programmé le ${formatDate(post.scheduled_at)}`
+                  : post.published_at
+                    ? `Publié le ${formatDate(post.published_at)}`
+                    : 'Date non disponible'}
               </p>
             </div>
           </div>

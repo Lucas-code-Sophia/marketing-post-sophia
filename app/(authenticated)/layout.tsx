@@ -1,5 +1,6 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
+import { ensureUserProfile } from '@/lib/supabase/profiles'
 import { Sidebar } from '@/components/layout/sidebar'
 import type { UserRole } from '@/types'
 
@@ -15,6 +16,9 @@ export default async function AuthenticatedLayout({
   if (!user) {
     redirect('/login')
   }
+
+  // Garantit l'existence du profil dans public.users (FK posts.created_by)
+  await ensureUserProfile(user)
 
   // Get user role from users table
   const { data: userData } = await supabase

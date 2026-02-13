@@ -15,6 +15,7 @@ import type { Post } from '@/types'
 export default function ValidationPage() {
   const supabase = createClient()
   const [posts, setPosts] = useState<Post[]>([])
+  const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [actionLoading, setActionLoading] = useState<string | null>(null)
   const [rejectingPost, setRejectingPost] = useState<string | null>(null)
@@ -28,13 +29,19 @@ export default function ValidationPage() {
 
   async function fetchPosts() {
     setLoading(true)
-    const { data } = await supabase
+    setError(null)
+    const { data, error } = await supabase
       .from('posts')
       .select('*')
       .eq('status', 'pending_validation')
-      .order('created_at', { ascending: true })
+      .order('scheduled_at', { ascending: true, nullsFirst: false })
     
-    if (data) setPosts(data)
+    if (error) {
+      setError(error.message)
+      setPosts([])
+    } else {
+      setPosts(data || [])
+    }
     setLoading(false)
   }
 
@@ -101,6 +108,14 @@ export default function ValidationPage() {
         </p>
       </div>
 
+      {error && (
+        <Card>
+          <CardContent className="py-4 text-sm text-red-600">
+            Erreur de chargement: {error}
+          </CardContent>
+        </Card>
+      )}
+
       {posts.length === 0 ? (
         <Card>
           <CardContent className="py-12 text-center text-muted-foreground">
@@ -118,7 +133,13 @@ export default function ValidationPage() {
                     <div>
                       <CardTitle className="text-lg">{post.post_type}</CardTitle>
                       <p className="text-sm text-muted-foreground">
-                        Créé le {formatDate(post.created_at)}
+                        {(() => {
+                          const referenceDate =
+                            post.scheduled_at || post.validated_at || post.published_at
+                          return referenceDate
+                            ? `Référence: ${formatDate(referenceDate)}`
+                            : 'Date non disponible'
+                        })()}
                       </p>
                     </div>
                   </div>

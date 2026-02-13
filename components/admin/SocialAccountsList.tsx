@@ -35,12 +35,14 @@ export function SocialAccountsList({ accounts: initialAccounts }: SocialAccounts
 
   // Form state for edit
   const [editName, setEditName] = useState('')
+  const [editAccountId, setEditAccountId] = useState('')
   const [editToken, setEditToken] = useState('')
   const [editTokenExpires, setEditTokenExpires] = useState('')
 
   function openEdit(account: SocialAccount) {
     setEditingAccount(account)
     setEditName(account.account_name)
+    setEditAccountId(account.account_id)
     setEditToken('')
     setEditTokenExpires(account.token_expires_at ? account.token_expires_at.slice(0, 16) : '')
     setMessage(null)
@@ -56,8 +58,15 @@ export function SocialAccountsList({ accounts: initialAccounts }: SocialAccounts
     setSaving(true)
     setMessage(null)
     try {
-      const updates: { account_name: string; updated_at: string; access_token?: string; token_expires_at?: string | null } = {
+      const updates: {
+        account_name: string
+        account_id: string
+        updated_at: string
+        access_token?: string
+        token_expires_at?: string | null
+      } = {
         account_name: editName.trim(),
+        account_id: editAccountId.trim(),
         updated_at: new Date().toISOString(),
       }
       if (editToken.trim()) {
@@ -173,6 +182,16 @@ export function SocialAccountsList({ accounts: initialAccounts }: SocialAccounts
               />
             </div>
             <div className="grid gap-2">
+              <Label htmlFor="edit_account_id">ID du compte</Label>
+              <Input
+                id="edit_account_id"
+                value={editAccountId}
+                onChange={(e) => setEditAccountId(e.target.value)}
+                placeholder="Ex: 178414..."
+                autoComplete="off"
+              />
+            </div>
+            <div className="grid gap-2">
               <Label htmlFor="edit_token">Nouveau token (laisser vide pour ne pas changer)</Label>
               <Input
                 id="edit_token"
@@ -197,7 +216,7 @@ export function SocialAccountsList({ accounts: initialAccounts }: SocialAccounts
             <Button variant="outline" onClick={() => setEditingAccount(null)} disabled={saving}>
               Annuler
             </Button>
-            <Button onClick={handleSaveEdit} disabled={saving || !editName.trim()}>
+            <Button onClick={handleSaveEdit} disabled={saving || !editName.trim() || !editAccountId.trim()}>
               {saving ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />

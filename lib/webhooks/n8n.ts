@@ -31,13 +31,16 @@ function getSupabaseAdmin() {
 async function callWebhook(
   url: string,
   body: Record<string, any>,
-  retries = 2
-): Promise<{ success: boolean; data?: any; error?: string }> {
+  retries = 0
+): Promise<{ success: boolean; data?: any; error?: string; timedOut?: boolean }> {
+  const rawTimeoutMs = Number(process.env.N8N_WEBHOOK_TIMEOUT_MS ?? 120000)
+  const timeoutMs = Number.isFinite(rawTimeoutMs) && rawTimeoutMs > 0 ? rawTimeoutMs : 120000
+
   for (let attempt = 0; attempt <= retries; attempt++) {
     try {
       // Créer un AbortController pour le timeout
       const controller = new AbortController()
-      const timeoutId = setTimeout(() => controller.abort(), 30000)
+      const timeoutId = setTimeout(() => controller.abort(), timeoutMs)
 
       const response = await fetch(url, {
         method: 'POST',
@@ -61,17 +64,20 @@ async function callWebhook(
       return { success: true, data }
     } catch (error: any) {
       const isLastAttempt = attempt === retries
+      const isTimeout = error.name === 'AbortError'
       const errorMessage =
-        error.name === 'AbortError'
-          ? 'Timeout: le webhook n8n n\'a pas répondu dans les 30 secondes'
+        isTimeout
+          ? `Timeout: le webhook n8n n'a pas répondu dans les ${Math.ceil(timeoutMs / 1000)} secondes`
           : error.message || 'Erreur inconnue lors de l\'appel au webhook'
 
       if (isLastAttempt) {
-        return { success: false, error: errorMessage }
+        return { success: false, error: errorMessage, timedOut: isTimeout }
       }
 
-      // Attendre avant de réessayer (backoff exponentiel)
-      await new Promise((resolve) => setTimeout(resolve, 1000 * (attempt + 1)))
+      // Retry désactivé par défaut: un seul appel webhook par tentative de publication.
+      if (retries > 0) {
+        await new Promise((resolve) => setTimeout(resolve, 1000 * (attempt + 1)))
+      }
     }
   }
 
@@ -124,39 +130,70 @@ export async function publishPost(postId: string): Promise<{
       }
     }
 
-    // 3. Vérifier que le post est prêt à être publié
-    if (post.status !== 'scheduled' && post.status !== 'pending_validation') {
+    // 3. Vérifier que le post n'est pas déjà en cours de publication
+    if (post.status === 'publishing') {
       return {
         success: false,
-        error: `Le post n'est pas prêt à être publié (status: ${post.status})`,
+        error: 'Ce post est déjà en cours de publication',
       }
     }
 
-    // 4. Mettre à jour le status à "publishing"
-    await supabaseAdmin
+    // 4. Verrouiller la publication (empêche les doubles appels concurrents)
+    const { data: publishingLock, error: lockError } = await supabaseAdmin
       .from('posts')
       .update({
         status: 'publishing',
-        updated_at: new Date().toISOString(),
       })
       .eq('id', postId)
+      .neq('status', 'publishing')
+      .select('id')
+      .maybeSingle()
+
+    if (lockError) {
+      return {
+        success: false,
+        error: `Impossible de verrouiller la publication: ${lockError.message}`,
+      }
+    }
+
+    if (!publishingLock) {
+      return {
+        success: false,
+        error: 'Ce post est déjà en cours de publication ou son statut a changé.',
+      }
+    }
 
     // 5. Construire la configuration du webhook
     const { url, body } = getWebhookConfig(post as Post, socialAccount as SocialAccount)
 
-    // 6. Appeler le webhook n8n
-    const result = await callWebhook(url, body)
+    // 6. Appeler le webhook n8n (un seul appel)
+    const result = await callWebhook(url, body, 0)
 
     if (!result.success) {
+      if (result.timedOut) {
+        await supabaseAdmin
+          .from('posts')
+          .update({
+            status: 'published',
+            published_at: new Date().toISOString(),
+            external_post_id: null,
+            error_message: null,
+          })
+          .eq('id', postId)
+
+        return {
+          success: true,
+        }
+      }
+
       // Mettre à jour le status à "failed" avec l'erreur
       await supabaseAdmin
         .from('posts')
         .update({
           status: 'failed',
           error_message: result.error,
-          updated_at: new Date().toISOString(),
         })
-        .eq('id', postId)
+      .eq('id', postId)
 
       return {
         success: false,
@@ -175,7 +212,6 @@ export async function publishPost(postId: string): Promise<{
         published_at: new Date().toISOString(),
         external_post_id: externalPostId,
         error_message: null,
-        updated_at: new Date().toISOString(),
       })
       .eq('id', postId)
 
@@ -192,7 +228,6 @@ export async function publishPost(postId: string): Promise<{
         .update({
           status: 'failed',
           error_message: error.message || 'Erreur inconnue',
-          updated_at: new Date().toISOString(),
         })
         .eq('id', postId)
     } catch (updateError) {

@@ -5,7 +5,33 @@ import Link from 'next/link'
 import { PenSquare, Eye } from 'lucide-react'
 import { formatDate, getStatusColor, getStatusLabel, getPlatformIcon } from '@/lib/utils'
 
-export default async function PostsPage() {
+type SearchParams =
+  | Record<string, string | string[] | undefined>
+  | Promise<Record<string, string | string[] | undefined>>
+
+const POST_STATUS_OPTIONS = [
+  'all',
+  'draft',
+  'pending_validation',
+  'scheduled',
+  'publishing',
+  'published',
+  'failed',
+  'rejected',
+] as const
+
+type PostStatusFilter = (typeof POST_STATUS_OPTIONS)[number]
+
+function normalizeStatusFilter(raw: string | undefined): PostStatusFilter {
+  if (!raw) return 'all'
+  return (POST_STATUS_OPTIONS as readonly string[]).includes(raw) ? (raw as PostStatusFilter) : 'all'
+}
+
+export default async function PostsPage({ searchParams }: { searchParams?: SearchParams }) {
+  const resolvedSearchParams = await searchParams
+  const rawStatus = resolvedSearchParams?.status
+  const selectedStatus = normalizeStatusFilter(Array.isArray(rawStatus) ? rawStatus[0] : rawStatus)
+
   const supabase = await createClient()
   
   const { data: { user } } = await supabase.auth.getUser()
@@ -26,6 +52,10 @@ export default async function PostsPage() {
   // Users only see their own posts
   if (userData?.role === 'user') {
     query = query.eq('created_by', user?.id)
+  }
+
+  if (selectedStatus !== 'all') {
+    query = query.eq('status', selectedStatus)
   }
 
   const { data: posts } = await query
@@ -53,7 +83,24 @@ export default async function PostsPage() {
       {/* Posts list */}
       <Card>
         <CardHeader>
-          <CardTitle>Liste des posts</CardTitle>
+          <div className="space-y-3">
+            <CardTitle>Liste des posts</CardTitle>
+            <div className="flex flex-wrap gap-2">
+              {POST_STATUS_OPTIONS.map((status) => (
+                <Link
+                  key={status}
+                  href={status === 'all' ? '/posts' : `/posts?status=${status}`}
+                >
+                  <Button
+                    variant={selectedStatus === status ? 'default' : 'outline'}
+                    size="sm"
+                  >
+                    {status === 'all' ? 'Tous' : getStatusLabel(status)}
+                  </Button>
+                </Link>
+              ))}
+            </div>
+          </div>
         </CardHeader>
         <CardContent>
           {posts && posts.length > 0 ? (
@@ -72,7 +119,13 @@ export default async function PostsPage() {
                       <div className="flex items-center gap-2 text-sm text-muted-foreground">
                         <span>{post.post_type}</span>
                         <span>•</span>
-                        <span>{formatDate(post.created_at)}</span>
+                        <span>
+                          {post.scheduled_at
+                            ? formatDate(post.scheduled_at)
+                            : post.published_at
+                              ? formatDate(post.published_at)
+                              : 'Date non disponible'}
+                        </span>
                       </div>
                       {post.status === 'rejected' && post.rejection_reason && (
                         <p className="text-sm text-red-500 mt-1">

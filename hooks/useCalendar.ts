@@ -44,7 +44,7 @@ export function useCalendar(options: UseCalendarOptions = {}) {
       // Construire la requête selon le rôle
       let query = supabase
         .from('posts')
-        .select('*')
+        .select('*, social_account:social_accounts(account_name)')
         .in('status', ['scheduled', 'published', 'publishing'])
         .not('scheduled_at', 'is', null)
         .order('scheduled_at', { ascending: true })

@@ -17,28 +17,46 @@ export default async function DashboardPage() {
     .eq('id', user?.id)
     .single()
 
+  const isBasicUser = userData?.role === 'user'
+
   // Get stats
-  const { count: pendingCount } = await supabase
+  let pendingQuery = supabase
     .from('posts')
     .select('*', { count: 'exact', head: true })
     .eq('status', 'pending_validation')
 
-  const { count: scheduledCount } = await supabase
+  let scheduledQuery = supabase
     .from('posts')
     .select('*', { count: 'exact', head: true })
     .eq('status', 'scheduled')
 
-  const { count: publishedCount } = await supabase
+  let publishedQuery = supabase
     .from('posts')
     .select('*', { count: 'exact', head: true })
     .eq('status', 'published')
 
+  if (isBasicUser && user?.id) {
+    pendingQuery = pendingQuery.eq('created_by', user.id)
+    scheduledQuery = scheduledQuery.eq('created_by', user.id)
+    publishedQuery = publishedQuery.eq('created_by', user.id)
+  }
+
+  const { count: pendingCount } = await pendingQuery
+  const { count: scheduledCount } = await scheduledQuery
+  const { count: publishedCount } = await publishedQuery
+
   // Get recent posts
-  const { data: recentPosts } = await supabase
+  let recentPostsQuery = supabase
     .from('posts')
     .select('*')
-    .order('created_at', { ascending: false })
+    .order('scheduled_at', { ascending: false, nullsFirst: false })
     .limit(5)
+
+  if (isBasicUser && user?.id) {
+    recentPostsQuery = recentPostsQuery.eq('created_by', user.id)
+  }
+
+  const { data: recentPosts } = await recentPostsQuery
 
   return (
     <div className="space-y-6">
@@ -116,7 +134,11 @@ export default async function DashboardPage() {
                         {post.caption || 'Sans titre'}
                       </p>
                       <p className="text-sm text-muted-foreground">
-                        {formatDate(post.created_at)}
+                        {post.scheduled_at
+                          ? formatDate(post.scheduled_at)
+                          : post.published_at
+                            ? formatDate(post.published_at)
+                            : 'Date non disponible'}
                       </p>
                     </div>
                   </div>

@@ -14,6 +14,26 @@ interface PostPreviewCompactProps {
   title?: string
 }
 
+function getAccountDisplayName(post: Post): string {
+  const accountName = (post.social_account as { account_name?: string } | undefined)?.account_name
+  if (typeof accountName === 'string' && accountName.trim().length > 0) {
+    return accountName.trim()
+  }
+
+  if (post.platform === 'instagram') return 'compte_instagram'
+  if (post.platform === 'facebook') return 'Page Facebook'
+  return 'Google Business Profile'
+}
+
+function getInitials(label: string): string {
+  return label
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase() ?? '')
+    .join('') || 'PG'
+}
+
 /**
  * Aperçu compact d'un post dans le calendrier : même forme que la plateforme cible
  * (Instagram / Facebook / GMB) avec texte, photo ou vidéo + description visible.
@@ -22,8 +42,17 @@ export function PostPreviewCompact({ post, onClick, className, title }: PostPrev
   const scheduledTime = post.scheduled_at
     ? format(parseISO(post.scheduled_at), 'HH:mm', { locale: fr })
     : null
+  const publishedTime = post.published_at
+    ? format(parseISO(post.published_at), 'HH:mm', { locale: fr })
+    : null
+  const timeLabel =
+    post.status === 'published' && publishedTime
+      ? `Publié ${publishedTime}`
+      : scheduledTime
+        ? `Programmé ${scheduledTime}`
+        : null
 
-  const common = { post, scheduledTime, onClick, className, title }
+  const common = { post, timeLabel, onClick, className, title }
 
   if (post.platform === 'instagram') {
     return <MiniInstagramCard {...common} />
@@ -52,17 +81,18 @@ function getMedias(post: Post): { url: string; type: string }[] {
 
 function MiniInstagramCard({
   post,
-  scheduledTime,
+  timeLabel,
   onClick,
   className,
   title,
 }: {
   post: Post
-  scheduledTime: string | null
+  timeLabel: string | null
   onClick?: () => void
   className?: string
   title?: string
 }) {
+  const accountName = getAccountDisplayName(post)
   const medias = getMedias(post)
   const first = medias[0]
   const isVideo = first?.type === 'video'
@@ -85,9 +115,9 @@ function MiniInstagramCard({
       {/* Header IG */}
       <div className="flex items-center gap-1.5 px-1.5 py-1 border-b border-gray-200">
         <div className="w-4 h-4 rounded-full bg-gradient-to-tr from-yellow-400 via-red-500 to-purple-500 flex-shrink-0" />
-        <span className="text-[10px] font-semibold truncate flex-1">carmen_immobilier</span>
-        {scheduledTime && (
-          <span className="text-[9px] text-gray-500 flex-shrink-0">{scheduledTime}</span>
+        <span className="text-[10px] font-semibold truncate flex-1">{accountName}</span>
+        {timeLabel && (
+          <span className="text-[9px] text-gray-500 flex-shrink-0">{timeLabel}</span>
         )}
       </div>
       {/* Media ou zone texte */}
@@ -126,15 +156,15 @@ function MiniInstagramCard({
           </>
         ) : (
           <div className="w-full h-full flex items-center justify-center p-1.5">
-            <p className="text-[10px] text-gray-500 text-center line-clamp-3">{post.caption || 'Texte'}</p>
+            <p className="text-[10px] text-gray-500 text-center whitespace-pre-wrap break-words max-h-12 overflow-hidden">{post.caption || 'Texte'}</p>
           </div>
         )}
       </div>
       {/* Caption */}
       {post.caption && hasMedia && (
         <div className="px-1.5 py-1 border-t border-gray-100">
-          <p className="text-[10px] text-gray-800 line-clamp-2">
-            <span className="font-semibold">carmen_immobilier</span> {post.caption}
+          <p className="text-[10px] text-gray-800 whitespace-pre-wrap break-words max-h-10 overflow-hidden">
+            <span className="font-semibold">{accountName}</span> {post.caption}
           </p>
         </div>
       )}
@@ -144,17 +174,18 @@ function MiniInstagramCard({
 
 function MiniFacebookCard({
   post,
-  scheduledTime,
+  timeLabel,
   onClick,
   className,
   title,
 }: {
   post: Post
-  scheduledTime: string | null
+  timeLabel: string | null
   onClick?: () => void
   className?: string
   title?: string
 }) {
+  const accountName = getAccountDisplayName(post)
   const medias = getMedias(post)
   const first = medias[0]
   const isVideo = first?.type === 'video'
@@ -176,12 +207,12 @@ function MiniFacebookCard({
       {/* Header FB */}
       <div className="flex items-center gap-1.5 px-2 py-1.5 border-b border-gray-200">
         <div className="w-6 h-6 rounded-full bg-blue-600 flex items-center justify-center text-white text-[10px] font-bold flex-shrink-0">
-          CI
+          {getInitials(accountName)}
         </div>
         <div className="flex-1 min-w-0">
-          <p className="text-[10px] font-semibold truncate">Carmen Immobilier</p>
-          {scheduledTime && (
-            <p className="text-[9px] text-gray-500">Programmé {scheduledTime}</p>
+          <p className="text-[10px] font-semibold truncate">{accountName}</p>
+          {timeLabel && (
+            <p className="text-[9px] text-gray-500">{timeLabel}</p>
           )}
         </div>
       </div>
@@ -232,13 +263,13 @@ function MiniFacebookCard({
 
 function MiniGMBCard({
   post,
-  scheduledTime,
+  timeLabel,
   onClick,
   className,
   title,
 }: {
   post: Post
-  scheduledTime: string | null
+  timeLabel: string | null
   onClick?: () => void
   className?: string
   title?: string
@@ -264,7 +295,7 @@ function MiniGMBCard({
       <div className="p-1.5 text-white">
         <div className="flex items-center justify-between gap-1 mb-1">
           <span className="text-[10px] font-bold uppercase">GMB</span>
-          {scheduledTime && <span className="text-[9px] opacity-90">{scheduledTime}</span>}
+          {timeLabel && <span className="text-[9px] opacity-90">{timeLabel}</span>}
         </div>
         {hasMedia ? (
           <div className="relative aspect-video rounded overflow-hidden bg-black/20 mb-1">
@@ -290,7 +321,7 @@ function MiniGMBCard({
           </div>
         ) : null}
         {post.caption && (
-          <p className="text-[10px] line-clamp-2 opacity-95">{post.caption}</p>
+          <p className="text-[10px] whitespace-pre-wrap break-words max-h-8 overflow-hidden opacity-95">{post.caption}</p>
         )}
       </div>
     </div>

@@ -65,9 +65,19 @@ export function PostPreviewModal({ post, open, onOpenChange, canEdit = false }: 
             </div>
             {post.scheduled_at && (
               <div>
-                <p className="text-sm font-medium text-gray-700">Date programmée</p>
+                <p className="text-sm font-medium text-gray-700">
+                  {post.status === 'published' && post.published_at ? 'Date programmée (initiale)' : 'Date programmée'}
+                </p>
                 <p className="text-sm text-gray-600">
                   {new Date(post.scheduled_at).toLocaleString('fr-FR')}
+                </p>
+              </div>
+            )}
+            {post.published_at && (
+              <div>
+                <p className="text-sm font-medium text-gray-700">Date de publication</p>
+                <p className="text-sm text-gray-600">
+                  {new Date(post.published_at).toLocaleString('fr-FR')}
                 </p>
               </div>
             )}
@@ -96,4 +106,3 @@ export function PostPreviewModal({ post, open, onOpenChange, canEdit = false }: 
     </Dialog>
   )
 }
-

@@ -233,7 +233,6 @@ export default function EditPostPage() {
           status: newStatus,
           scheduled_at: scheduledAt ? new Date(scheduledAt).toISOString() : null,
           social_account_id: socialAccountId || null,
-          updated_at: new Date().toISOString(),
         })
         .eq('id', postId)
 
