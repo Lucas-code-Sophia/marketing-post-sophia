@@ -2,15 +2,28 @@ import { createServerClient, type CookieOptions } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
 export async function updateSession(request: NextRequest) {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+
   let response = NextResponse.next({
     request: {
       headers: request.headers,
     },
   })
 
+  // En production (ex: Vercel), éviter de faire tomber tout le site si une variable
+  // d'environnement Supabase n'est pas encore renseignée.
+  if (!supabaseUrl || !supabaseAnonKey) {
+    console.error('Supabase env manquantes dans middleware:', {
+      hasUrl: Boolean(supabaseUrl),
+      hasAnonKey: Boolean(supabaseAnonKey),
+    })
+    return response
+  }
+
   const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    supabaseUrl,
+    supabaseAnonKey,
     {
       cookies: {
         get(name: string) {
@@ -54,7 +67,14 @@ export async function updateSession(request: NextRequest) {
     }
   )
 
-  const { data: { user } } = await supabase.auth.getUser()
+  let user = null
+  try {
+    const { data } = await supabase.auth.getUser()
+    user = data.user
+  } catch (error) {
+    console.error('Erreur getUser() dans middleware:', error)
+    return response
+  }
 
   // Protected routes
   const protectedPaths = ['/dashboard', '/posts', '/validation', '/admin', '/calendar', '/statistiques']
