@@ -28,14 +28,18 @@ import {
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 
-interface AccountStats {
+interface InstagramAccountInfo {
+  id: string
   account_name: string
-  current_followers: number
-  current_follows: number
-  current_media: number
-  followers_change_7d: number | null
-  followers_change_30d: number | null
-  followers_change_90d: number | null
+  account_id: string
+}
+
+interface AccountStatsRow {
+  social_account_id: string
+  date: string
+  followers_count: number
+  follows_count: number
+  media_count: number
 }
 
 interface PostStats {
@@ -72,12 +76,41 @@ interface PostStatsHistory {
 type EngagementSort = 'recent' | 'engagement_desc' | 'engagement_asc'
 type EngagementFilter = 'all' | 'high' | 'medium' | 'low'
 type HistoryRange = '7d' | '30d' | '90d' | 'all'
+type AccountRange = '7d' | '30d' | '90d' | 'all'
+
+const DAY_MS = 24 * 60 * 60 * 1000
+const ACCOUNT_RANGE_DAYS: Record<Exclude<AccountRange, 'all'>, number> = {
+  '7d': 7,
+  '30d': 30,
+  '90d': 90,
+}
 
 function toNumber(value: number | string | null | undefined): number {
   if (value === null || value === undefined) return 0
   if (typeof value === 'number') return Number.isFinite(value) ? value : 0
   const parsed = Number(value)
   return Number.isFinite(parsed) ? parsed : 0
+}
+
+function parseDateOnly(date: string): Date {
+  return new Date(`${date}T00:00:00Z`)
+}
+
+function findRowOnOrBefore(rows: AccountStatsRow[], targetMs: number): AccountStatsRow | null {
+  for (let i = rows.length - 1; i >= 0; i -= 1) {
+    const rowMs = parseDateOnly(rows[i].date).getTime()
+    if (rowMs <= targetMs) return rows[i]
+  }
+  return null
+}
+
+function toSignedText(value: number | null, digits = 0): string {
+  if (value === null) return '—'
+  const rounded = Number(value.toFixed(digits))
+  return `${rounded > 0 ? '+' : ''}${rounded.toLocaleString('fr-FR', {
+    minimumFractionDigits: digits,
+    maximumFractionDigits: digits,
+  })}`
 }
 
 function getViewsValue(post: PostStats): number | null {
@@ -262,6 +295,44 @@ function EngagementSparkline({ values }: { values: number[] }) {
       <div className="mt-2 flex items-center justify-between text-xs text-gray-500">
         <span>Plus ancien</span>
         <span>Plus récent</span>
+      </div>
+    </div>
+  )
+}
+
+function FollowersSparkline({ values }: { values: number[] }) {
+  if (values.length < 2) {
+    return (
+      <div className="rounded-md bg-gray-50 p-3 text-xs text-gray-500">
+        Pas assez d&apos;historique pour afficher la tendance abonnés.
+      </div>
+    )
+  }
+
+  const max = Math.max(...values)
+  const min = Math.min(...values)
+  const points = values
+    .map((value, index) => {
+      const x = (index / (values.length - 1)) * 100
+      const y = max === min ? 50 : 100 - ((value - min) / (max - min)) * 100
+      return `${x},${y}`
+    })
+    .join(' ')
+
+  return (
+    <div className="rounded-md border bg-white p-3">
+      <svg viewBox="0 0 100 100" className="h-28 w-full">
+        <polyline
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="3"
+          points={points}
+          className="text-emerald-500"
+        />
+      </svg>
+      <div className="mt-2 flex items-center justify-between text-xs text-gray-500">
+        <span>Début période</span>
+        <span>Aujourd&apos;hui</span>
       </div>
     </div>
   )
@@ -513,7 +584,9 @@ export default function StatistiquesPage() {
   const supabase = createClient()
   
   const [loading, setLoading] = useState(true)
-  const [accountStats, setAccountStats] = useState<AccountStats | null>(null)
+  const [instagramAccount, setInstagramAccount] = useState<InstagramAccountInfo | null>(null)
+  const [accountHistory, setAccountHistory] = useState<AccountStatsRow[]>([])
+  const [accountRange, setAccountRange] = useState<AccountRange>('30d')
   const [posts, setPosts] = useState<PostStats[]>([])
   const [selectedPost, setSelectedPost] = useState<PostStats | null>(null)
   const [modalOpen, setModalOpen] = useState(false)
@@ -528,25 +601,54 @@ export default function StatistiquesPage() {
 
   async function fetchData() {
     setLoading(true)
-    
-    // Fetch account stats with variations
-    const { data: statsData } = await supabase
-      .from('instagram_stats_with_variations')
-      .select('*')
-      .single()
-    
-    if (statsData) {
-      setAccountStats(statsData)
+
+    // Compte Instagram principal
+    const { data: accountData, error: accountError } = await supabase
+      .from('social_accounts')
+      .select('id,account_name,account_id')
+      .eq('platform', 'instagram')
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+
+    if (accountError) {
+      console.error('Erreur chargement compte Instagram:', accountError)
+    }
+    setInstagramAccount((accountData as InstagramAccountInfo | null) || null)
+
+    // Historique journalier du compte (followers/follows/media_count)
+    let accountStatsQuery = supabase
+      .from('instagram_account_stats')
+      .select('social_account_id,date,followers_count,follows_count,media_count')
+      .order('date', { ascending: true })
+
+    if (accountData?.id) {
+      accountStatsQuery = accountStatsQuery.eq('social_account_id', accountData.id)
+    }
+
+    const { data: accountStatsData, error: accountStatsError } = await accountStatsQuery
+
+    if (accountStatsError) {
+      console.error('Erreur chargement historique compte Instagram:', accountStatsError)
+      setAccountHistory([])
+    } else {
+      setAccountHistory((accountStatsData as AccountStatsRow[] | null) || [])
     }
     
     // Fetch post stats
-    const { data: postsData } = await supabase
+    const { data: postsData, error: postsError } = await supabase
       .from('instagram_post_stats')
       .select('*')
       .order('timestamp', { ascending: false })
     
+    if (postsError) {
+      console.error('Erreur chargement stats posts Instagram:', postsError)
+    }
+
     if (postsData) {
       setPosts(postsData)
+    } else {
+      setPosts([])
     }
     
     setLoading(false)
@@ -589,6 +691,105 @@ export default function StatistiquesPage() {
       cancelled = true
     }
   }, [modalOpen, selectedPost?.media_id, historyByMediaId])
+
+  const accountInsights = useMemo(() => {
+    if (accountHistory.length === 0) return null
+
+    const rows = [...accountHistory]
+      .map((row) => ({
+        ...row,
+        followers_count: toNumber(row.followers_count),
+        follows_count: toNumber(row.follows_count),
+        media_count: toNumber(row.media_count),
+      }))
+      .sort((a, b) => parseDateOnly(a.date).getTime() - parseDateOnly(b.date).getTime())
+
+    const latest = rows[rows.length - 1]
+    const latestMs = parseDateOnly(latest.date).getTime()
+
+    const rowsInRange =
+      accountRange === 'all'
+        ? rows
+        : rows.filter(
+            (row) =>
+              latestMs - parseDateOnly(row.date).getTime() <= ACCOUNT_RANGE_DAYS[accountRange] * DAY_MS
+          )
+    const periodRows = rowsInRange.length > 0 ? rowsInRange : [latest]
+    const periodStart = periodRows[0]
+    const periodStartMs = parseDateOnly(periodStart.date).getTime()
+    const daysTracked = Math.max(1, Math.round((latestMs - periodStartMs) / DAY_MS))
+
+    const followersDeltaPeriod = latest.followers_count - periodStart.followers_count
+    const followsDeltaPeriod = latest.follows_count - periodStart.follows_count
+    const mediaDeltaPeriod = latest.media_count - periodStart.media_count
+    const avgFollowersPerDay = followersDeltaPeriod / daysTracked
+
+    const monthAgoRow = findRowOnOrBefore(rows, latestMs - 30 * DAY_MS)
+    const followersVsLastMonth = monthAgoRow
+      ? latest.followers_count - monthAgoRow.followers_count
+      : null
+
+    const getDeltaForDays = (days: number): number | null => {
+      const reference = findRowOnOrBefore(rows, latestMs - days * DAY_MS)
+      if (!reference) return null
+      return latest.followers_count - reference.followers_count
+    }
+
+    const delta7 = getDeltaForDays(7)
+    const delta30 = getDeltaForDays(30)
+    const delta90 = getDeltaForDays(90)
+
+    const latestPost = posts.length > 0 ? posts[0] : null
+    let followersSinceLastPost: number | null = null
+    let daysSinceLastPost: number | null = null
+
+    if (latestPost) {
+      const latestPostMs = new Date(latestPost.timestamp).getTime()
+      const baselineRow = findRowOnOrBefore(rows, latestPostMs)
+      if (baselineRow) {
+        const baselineMs = parseDateOnly(baselineRow.date).getTime()
+        followersSinceLastPost = latest.followers_count - baselineRow.followers_count
+        daysSinceLastPost = Math.max(0, Math.round((latestMs - baselineMs) / DAY_MS))
+      }
+    }
+
+    const postsInRange = posts.filter(
+      (post) => new Date(post.timestamp).getTime() >= periodStartMs
+    ).length
+    const followersPerPost = postsInRange > 0 ? followersDeltaPeriod / postsInRange : null
+
+    const periodLabel =
+      accountRange === 'all'
+        ? 'tout l’historique'
+        : accountRange === '7d'
+          ? '7 jours'
+          : accountRange === '30d'
+            ? '30 jours'
+            : '90 jours'
+
+    return {
+      currentFollowers: latest.followers_count,
+      currentFollows: latest.follows_count,
+      currentMedia: latest.media_count,
+      latestDate: latest.date,
+      periodLabel,
+      periodStartDate: periodStart.date,
+      followersDeltaPeriod,
+      followsDeltaPeriod,
+      mediaDeltaPeriod,
+      daysTracked,
+      avgFollowersPerDay,
+      followersVsLastMonth,
+      followersSinceLastPost,
+      daysSinceLastPost,
+      postsInRange,
+      followersPerPost,
+      delta7,
+      delta30,
+      delta90,
+      followersSeries: periodRows.map((row) => row.followers_count),
+    }
+  }, [accountHistory, accountRange, posts])
 
   const displayedPosts = useMemo(() => {
     const list = [...posts]
@@ -635,42 +836,141 @@ export default function StatistiquesPage() {
 
       {/* Stats Instagram */}
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle className="flex items-center gap-2">
-            <Instagram className="h-5 w-5 text-pink-500" />
-            Instagram {accountStats?.account_name && `— @${accountStats.account_name}`}
-          </CardTitle>
+        <CardHeader className="space-y-4">
+          <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+            <CardTitle className="flex items-center gap-2">
+              <Instagram className="h-5 w-5 text-pink-500" />
+              Instagram {instagramAccount?.account_name && `— @${instagramAccount.account_name}`}
+            </CardTitle>
+            {accountInsights && (
+              <span className="text-xs text-muted-foreground">
+                Dernier snapshot: {parseDateOnly(accountInsights.latestDate).toLocaleDateString('fr-FR')}
+              </span>
+            )}
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              size="sm"
+              variant={accountRange === '7d' ? 'default' : 'outline'}
+              onClick={() => setAccountRange('7d')}
+            >
+              7 jours
+            </Button>
+            <Button
+              size="sm"
+              variant={accountRange === '30d' ? 'default' : 'outline'}
+              onClick={() => setAccountRange('30d')}
+            >
+              30 jours
+            </Button>
+            <Button
+              size="sm"
+              variant={accountRange === '90d' ? 'default' : 'outline'}
+              onClick={() => setAccountRange('90d')}
+            >
+              90 jours
+            </Button>
+            <Button
+              size="sm"
+              variant={accountRange === 'all' ? 'default' : 'outline'}
+              onClick={() => setAccountRange('all')}
+            >
+              Tout
+            </Button>
+          </div>
         </CardHeader>
         <CardContent>
-          {accountStats ? (
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              {/* Abonnés */}
-              <div className="rounded-lg border p-4">
-                <p className="text-3xl font-bold">{accountStats.current_followers.toLocaleString()}</p>
-                <p className="text-sm text-muted-foreground mb-2">Abonnés</p>
-                <div className="flex flex-wrap gap-2">
-                  <VariationBadge value={accountStats.followers_change_7d} period="7j" />
-                  <VariationBadge value={accountStats.followers_change_30d} period="30j" />
-                  <VariationBadge value={accountStats.followers_change_90d} period="90j" />
+          {accountInsights ? (
+            <div className="space-y-4">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+                <div className="rounded-lg border p-4">
+                  <p className="text-3xl font-bold">
+                    {accountInsights.currentFollowers.toLocaleString('fr-FR')}
+                  </p>
+                  <p className="text-sm text-muted-foreground">Abonnés</p>
+                  <p
+                    className={`mt-2 text-sm font-medium ${
+                      accountInsights.followersDeltaPeriod >= 0 ? 'text-emerald-600' : 'text-red-600'
+                    }`}
+                  >
+                    {toSignedText(accountInsights.followersDeltaPeriod)} sur {accountInsights.periodLabel}
+                  </p>
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    <VariationBadge value={accountInsights.delta7} period="7j" />
+                    <VariationBadge value={accountInsights.delta30} period="30j" />
+                    <VariationBadge value={accountInsights.delta90} period="90j" />
+                  </div>
+                </div>
+
+                <div className="rounded-lg border p-4">
+                  <p className="text-3xl font-bold">{toSignedText(accountInsights.avgFollowersPerDay, 1)}</p>
+                  <p className="text-sm text-muted-foreground">Croissance moyenne / jour</p>
+                  <p className="mt-2 text-xs text-muted-foreground">
+                    {accountInsights.daysTracked} jours observés
+                  </p>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    {toSignedText(accountInsights.followersPerPost, 1)} abonné/post
+                  </p>
+                </div>
+
+                <div className="rounded-lg border p-4">
+                  <p className="text-3xl font-bold">{toSignedText(accountInsights.followersVsLastMonth)}</p>
+                  <p className="text-sm text-muted-foreground">Comparé au mois dernier</p>
+                  <p className="mt-2 text-xs text-muted-foreground">
+                    Objectif: valider la traction mensuelle
+                  </p>
+                </div>
+
+                <div className="rounded-lg border p-4">
+                  <p className="text-3xl font-bold">{toSignedText(accountInsights.followersSinceLastPost)}</p>
+                  <p className="text-sm text-muted-foreground">Depuis la dernière publication</p>
+                  <p className="mt-2 text-xs text-muted-foreground">
+                    {accountInsights.daysSinceLastPost !== null
+                      ? `${accountInsights.daysSinceLastPost} jour(s) de recul`
+                      : 'Pas de publication détectée'}
+                  </p>
                 </div>
               </div>
-              
-              {/* Abonnements */}
-              <div className="rounded-lg border p-4">
-                <p className="text-3xl font-bold">{accountStats.current_follows.toLocaleString()}</p>
-                <p className="text-sm text-muted-foreground">Abonnements</p>
-              </div>
-              
-              {/* Publications */}
-              <div className="rounded-lg border p-4">
-                <p className="text-3xl font-bold">{accountStats.current_media}</p>
-                <p className="text-sm text-muted-foreground">Publications</p>
+
+              <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+                <div className="space-y-3 rounded-lg border p-4 lg:col-span-2">
+                  <p className="text-sm font-semibold">
+                    Évolution abonnés ({accountInsights.periodLabel})
+                  </p>
+                  <FollowersSparkline values={accountInsights.followersSeries} />
+                  <p className="text-xs text-muted-foreground">
+                    Du {parseDateOnly(accountInsights.periodStartDate).toLocaleDateString('fr-FR')} au{' '}
+                    {parseDateOnly(accountInsights.latestDate).toLocaleDateString('fr-FR')}
+                  </p>
+                </div>
+
+                <div className="space-y-2 rounded-lg border p-4">
+                  <p className="text-sm font-semibold">Insights rapides</p>
+                  <p className="text-sm text-muted-foreground">
+                    {accountInsights.currentFollows.toLocaleString('fr-FR')} abonnements pour{' '}
+                    {accountInsights.currentMedia.toLocaleString('fr-FR')} publications.
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    {toSignedText(accountInsights.followersDeltaPeriod)} abonnés gagnés sur{' '}
+                    {accountInsights.periodLabel}.
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    {accountInsights.postsInRange} publication(s) sur la période.
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    {toSignedText(accountInsights.followsDeltaPeriod)} abonnements et{' '}
+                    {toSignedText(accountInsights.mediaDeltaPeriod)} nouveaux contenus.
+                  </p>
+                </div>
               </div>
             </div>
           ) : (
             <div className="text-center py-8 text-muted-foreground">
-              <p>Aucune donnée disponible</p>
-              <p className="text-sm mt-1">Les stats seront récupérées automatiquement chaque jour</p>
+              <p>Aucune donnée compte disponible</p>
+              <p className="text-sm mt-1">
+                Vérifie le workflow n8n &quot;Instagram Stats Daily&quot; et la table
+                `instagram_account_stats`.
+              </p>
             </div>
           )}
         </CardContent>
