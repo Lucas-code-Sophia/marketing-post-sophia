@@ -113,6 +113,78 @@ function toSignedText(value: number | null, digits = 0): string {
   })}`
 }
 
+function toPercentText(value: number | null): string {
+  if (value === null) return '—'
+  return `${value > 0 ? '+' : ''}${(value * 100).toFixed(0)}%`
+}
+
+function formatAxisDateLabel(value: string | null | undefined): string {
+  if (!value) return '—'
+
+  const isDateOnly = /^\d{4}-\d{2}-\d{2}$/.test(value)
+  const date = isDateOnly ? parseDateOnly(value) : new Date(value)
+  if (Number.isNaN(date.getTime())) return '—'
+
+  return date.toLocaleDateString('fr-FR', {
+    day: '2-digit',
+    month: 'short',
+    timeZone: 'UTC',
+  })
+}
+
+function formatAxisMetricLabel(value: number): string {
+  const rounded =
+    Math.abs(value) >= 100 ? Math.round(value) : Number(value.toFixed(1))
+
+  return rounded.toLocaleString('fr-FR', {
+    minimumFractionDigits: Math.abs(rounded) >= 100 ? 0 : 1,
+    maximumFractionDigits: Math.abs(rounded) >= 100 ? 0 : 1,
+  })
+}
+
+function parseTimelineDate(value: string | null | undefined): number | null {
+  if (!value) return null
+  const isDateOnly = /^\d{4}-\d{2}-\d{2}$/.test(value)
+  const date = isDateOnly ? parseDateOnly(value) : new Date(value)
+  const ms = date.getTime()
+  return Number.isNaN(ms) ? null : ms
+}
+
+function formatAxisDateFromMs(ms: number): string {
+  return new Date(ms).toLocaleDateString('fr-FR', {
+    day: '2-digit',
+    month: 'short',
+    timeZone: 'UTC',
+  })
+}
+
+function toDateOnlyFromMs(ms: number): string {
+  return new Date(ms).toISOString().slice(0, 10)
+}
+
+function computePearson(xs: number[], ys: number[]): number | null {
+  if (xs.length !== ys.length || xs.length < 3) return null
+
+  const n = xs.length
+  const meanX = xs.reduce((sum, x) => sum + x, 0) / n
+  const meanY = ys.reduce((sum, y) => sum + y, 0) / n
+
+  let numerator = 0
+  let xDenominator = 0
+  let yDenominator = 0
+
+  for (let i = 0; i < n; i += 1) {
+    const x = xs[i] - meanX
+    const y = ys[i] - meanY
+    numerator += x * y
+    xDenominator += x * x
+    yDenominator += y * y
+  }
+
+  if (xDenominator === 0 || yDenominator === 0) return null
+  return numerator / Math.sqrt(xDenominator * yDenominator)
+}
+
 function getViewsValue(post: PostStats): number | null {
   if (post.views !== null && post.views !== undefined) return toNumber(post.views)
   if (post.impressions !== null && post.impressions !== undefined) return toNumber(post.impressions)
@@ -262,79 +334,233 @@ function MetricDelta({ label, value }: { label: string; value: number | null }) 
   )
 }
 
-function EngagementSparkline({ values }: { values: number[] }) {
+function LineChart({
+  values,
+  dates,
+  strokeColor,
+  emptyMessage,
+  domainStartMs,
+  domainEndMs,
+}: {
+  values: number[]
+  dates: string[]
+  strokeColor: string
+  emptyMessage: string
+  domainStartMs?: number
+  domainEndMs?: number
+}) {
   if (values.length < 2) {
     return (
       <div className="rounded-md bg-gray-50 p-3 text-xs text-gray-500">
-        Pas assez d'historique pour afficher l'évolution.
+        {emptyMessage}
       </div>
     )
   }
 
+  const width = 100
+  const height = 80
+  const marginLeft = 14
+  const marginRight = 3
+  const marginTop = 4
+  const marginBottom = 14
+  const plotWidth = width - marginLeft - marginRight
+  const plotHeight = height - marginTop - marginBottom
+
   const max = Math.max(...values)
   const min = Math.min(...values)
-  const points = values
-    .map((value, index) => {
-      const x = (index / (values.length - 1)) * 100
-      const y = max === min ? 50 : 100 - ((value - min) / (max - min)) * 100
-      return `${x},${y}`
-    })
-    .join(' ')
+  const parsedDates = dates.map((date) => parseTimelineDate(date))
+  const validDateValues = parsedDates.filter((value): value is number => value !== null)
+  const autoStartMs = validDateValues.length > 0 ? Math.min(...validDateValues) : null
+  const autoEndMs = validDateValues.length > 0 ? Math.max(...validDateValues) : null
+  const xStartMs = domainStartMs ?? autoStartMs
+  const xEndMs = domainEndMs ?? autoEndMs
+  const useTimeScale = xStartMs !== null && xEndMs !== null && xEndMs > xStartMs
+
+  const mapXFromIndex = (index: number) =>
+    marginLeft + (index / Math.max(1, values.length - 1)) * plotWidth
+
+  const mapX = (index: number) => {
+    if (!useTimeScale) return mapXFromIndex(index)
+    const startMs = xStartMs as number
+    const endMs = xEndMs as number
+    const pointDateMs = parsedDates[index]
+    if (pointDateMs === null) return mapXFromIndex(index)
+    const clamped = Math.min(endMs, Math.max(startMs, pointDateMs))
+    return marginLeft + ((clamped - startMs) / (endMs - startMs)) * plotWidth
+  }
+
+  const mapY = (value: number) =>
+    marginTop + (max === min ? plotHeight / 2 : ((max - value) / (max - min)) * plotHeight)
+
+  const points = values.map((value, index) => `${mapX(index)},${mapY(value)}`).join(' ')
+
+  const yTicks = max === min ? [max + 1, max, max - 1] : [max, (max + min) / 2, min]
+  const xTickIndices = Array.from(
+    new Set([0, Math.floor((values.length - 1) / 2), values.length - 1])
+  ).sort((a, b) => a - b)
+  const xTicks = useTimeScale
+    ? [xStartMs as number, (xStartMs as number) + ((xEndMs as number) - (xStartMs as number)) / 2, xEndMs as number]
+    : null
 
   return (
     <div className="rounded-md border bg-white p-3">
-      <svg viewBox="0 0 100 100" className="h-28 w-full">
+      <svg viewBox={`0 0 ${width} ${height}`} className="h-36 w-full">
+        {yTicks.map((tickValue, index) => {
+          const y = mapY(tickValue)
+          return (
+            <g key={`y-${index}`}>
+              <line
+                x1={marginLeft}
+                y1={y}
+                x2={marginLeft + plotWidth}
+                y2={y}
+                stroke="#e5e7eb"
+                strokeWidth="0.4"
+                strokeDasharray="1 1"
+              />
+              <text
+                x={marginLeft - 1}
+                y={y + 1}
+                textAnchor="end"
+                fontSize="3.2"
+                fill="#6b7280"
+              >
+                {formatAxisMetricLabel(tickValue)}
+              </text>
+            </g>
+          )
+        })}
+
+        <line
+          x1={marginLeft}
+          y1={marginTop}
+          x2={marginLeft}
+          y2={marginTop + plotHeight}
+          stroke="#9ca3af"
+          strokeWidth="0.5"
+        />
+        <line
+          x1={marginLeft}
+          y1={marginTop + plotHeight}
+          x2={marginLeft + plotWidth}
+          y2={marginTop + plotHeight}
+          stroke="#9ca3af"
+          strokeWidth="0.5"
+        />
+
         <polyline
           fill="none"
-          stroke="currentColor"
-          strokeWidth="3"
+          stroke={strokeColor}
+          strokeWidth="1.2"
           points={points}
-          className="text-pink-500"
+          strokeLinejoin="round"
+          strokeLinecap="round"
         />
+
+        {values.map((value, index) => (
+          <circle
+            key={`point-${index}`}
+            cx={mapX(index)}
+            cy={mapY(value)}
+            r="0.7"
+            fill={strokeColor}
+          />
+        ))}
+
+        {xTicks
+          ? xTicks.map((tickValue, index) => {
+              const startMs = xTicks[0]
+              const endMs = xTicks[xTicks.length - 1]
+              const x = marginLeft + ((tickValue - startMs) / (endMs - startMs)) * plotWidth
+              const yBase = marginTop + plotHeight
+              const anchor = index === 0 ? 'start' : index === xTicks.length - 1 ? 'end' : 'middle'
+
+              return (
+                <g key={`x-time-${index}`}>
+                  <line
+                    x1={x}
+                    y1={yBase}
+                    x2={x}
+                    y2={yBase + 1.2}
+                    stroke="#9ca3af"
+                    strokeWidth="0.5"
+                  />
+                  <text x={x} y={yBase + 4.5} textAnchor={anchor} fontSize="3.2" fill="#6b7280">
+                    {formatAxisDateFromMs(tickValue)}
+                  </text>
+                </g>
+              )
+            })
+          : xTickIndices.map((index) => {
+              const x = mapX(index)
+              const yBase = marginTop + plotHeight
+              const dateLabel = formatAxisDateLabel(dates[index] ?? null)
+              const anchor = index === 0 ? 'start' : index === values.length - 1 ? 'end' : 'middle'
+
+              return (
+                <g key={`x-index-${index}`}>
+                  <line
+                    x1={x}
+                    y1={yBase}
+                    x2={x}
+                    y2={yBase + 1.2}
+                    stroke="#9ca3af"
+                    strokeWidth="0.5"
+                  />
+                  <text x={x} y={yBase + 4.5} textAnchor={anchor} fontSize="3.2" fill="#6b7280">
+                    {dateLabel}
+                  </text>
+                </g>
+              )
+            })}
       </svg>
-      <div className="mt-2 flex items-center justify-between text-xs text-gray-500">
-        <span>Plus ancien</span>
-        <span>Plus récent</span>
-      </div>
     </div>
   )
 }
 
-function FollowersSparkline({ values }: { values: number[] }) {
-  if (values.length < 2) {
-    return (
-      <div className="rounded-md bg-gray-50 p-3 text-xs text-gray-500">
-        Pas assez d&apos;historique pour afficher la tendance abonnés.
-      </div>
-    )
-  }
-
-  const max = Math.max(...values)
-  const min = Math.min(...values)
-  const points = values
-    .map((value, index) => {
-      const x = (index / (values.length - 1)) * 100
-      const y = max === min ? 50 : 100 - ((value - min) / (max - min)) * 100
-      return `${x},${y}`
-    })
-    .join(' ')
-
+function EngagementSparkline({
+  values,
+  dates,
+  domainStartMs,
+  domainEndMs,
+}: {
+  values: number[]
+  dates: string[]
+  domainStartMs?: number
+  domainEndMs?: number
+}) {
   return (
-    <div className="rounded-md border bg-white p-3">
-      <svg viewBox="0 0 100 100" className="h-28 w-full">
-        <polyline
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="3"
-          points={points}
-          className="text-emerald-500"
-        />
-      </svg>
-      <div className="mt-2 flex items-center justify-between text-xs text-gray-500">
-        <span>Début période</span>
-        <span>Aujourd&apos;hui</span>
-      </div>
-    </div>
+    <LineChart
+      values={values}
+      dates={dates}
+      strokeColor="#ec4899"
+      emptyMessage="Pas assez d'historique pour afficher l'évolution."
+      domainStartMs={domainStartMs}
+      domainEndMs={domainEndMs}
+    />
+  )
+}
+
+function FollowersSparkline({
+  values,
+  dates,
+  domainStartMs,
+  domainEndMs,
+}: {
+  values: number[]
+  dates: string[]
+  domainStartMs?: number
+  domainEndMs?: number
+}) {
+  return (
+    <LineChart
+      values={values}
+      dates={dates}
+      strokeColor="#10b981"
+      emptyMessage="Pas assez d'historique pour afficher la tendance abonnés."
+      domainStartMs={domainStartMs}
+      domainEndMs={domainEndMs}
+    />
   )
 }
 
@@ -353,7 +579,7 @@ function PostStatsModal({
   open: boolean
   onClose: () => void
 }) {
-  const [historyRange, setHistoryRange] = useState<HistoryRange>('30d')
+  const [historyRange, setHistoryRange] = useState<HistoryRange>('all')
   if (!post) return null
   
   const publishedDate = new Date(post.timestamp).toLocaleDateString('fr-FR', {
@@ -414,6 +640,15 @@ function PostStatsModal({
   const engagementSeries = hasHistory
     ? historyInRange.map((item) => toNumber(item.engagement))
     : fallbackEngagementSeries
+  const engagementDateSeries = hasHistory
+    ? historyInRange.map((item) => item.fetched_at)
+    : fallbackEvolutionSample.map((item) => item.timestamp)
+  const engagementDomainEndMs =
+    parseTimelineDate(engagementDateSeries[engagementDateSeries.length - 1] ?? null) ?? now
+  const engagementDomainStartMs =
+    historyRange === 'all'
+      ? parseTimelineDate(engagementDateSeries[0] ?? null) ?? engagementDomainEndMs
+      : engagementDomainEndMs - rangeMsByType[historyRange]
 
   const displayLikes = latestHistory?.likes ?? post.likes
   const displayComments = latestHistory?.comments ?? post.comments
@@ -554,7 +789,12 @@ function PostStatsModal({
               <MetricDelta label="Portée" value={reachDelta} />
               <MetricDelta label="Vues" value={viewsDelta} />
             </div>
-            <EngagementSparkline values={engagementSeries} />
+            <EngagementSparkline
+              values={engagementSeries}
+              dates={engagementDateSeries}
+              domainStartMs={engagementDomainStartMs}
+              domainEndMs={engagementDomainEndMs}
+            />
             {hasHistory && (
               <p className="text-xs text-muted-foreground">
                 {historyInRange.length} snapshots sur la période ({historyRange === 'all' ? 'tout' : historyRange}).
@@ -586,7 +826,7 @@ export default function StatistiquesPage() {
   const [loading, setLoading] = useState(true)
   const [instagramAccount, setInstagramAccount] = useState<InstagramAccountInfo | null>(null)
   const [accountHistory, setAccountHistory] = useState<AccountStatsRow[]>([])
-  const [accountRange, setAccountRange] = useState<AccountRange>('30d')
+  const [accountRange, setAccountRange] = useState<AccountRange>('all')
   const [posts, setPosts] = useState<PostStats[]>([])
   const [selectedPost, setSelectedPost] = useState<PostStats | null>(null)
   const [modalOpen, setModalOpen] = useState(false)
@@ -704,16 +944,17 @@ export default function StatistiquesPage() {
       }))
       .sort((a, b) => parseDateOnly(a.date).getTime() - parseDateOnly(b.date).getTime())
 
+    const firstRowMs = parseDateOnly(rows[0].date).getTime()
     const latest = rows[rows.length - 1]
     const latestMs = parseDateOnly(latest.date).getTime()
+    const requestedRangeDays = accountRange === 'all' ? null : ACCOUNT_RANGE_DAYS[accountRange]
+    const requestedWindowStartMs =
+      requestedRangeDays !== null ? latestMs - requestedRangeDays * DAY_MS : firstRowMs
 
     const rowsInRange =
       accountRange === 'all'
         ? rows
-        : rows.filter(
-            (row) =>
-              latestMs - parseDateOnly(row.date).getTime() <= ACCOUNT_RANGE_DAYS[accountRange] * DAY_MS
-          )
+        : rows.filter((row) => parseDateOnly(row.date).getTime() >= requestedWindowStartMs)
     const periodRows = rowsInRange.length > 0 ? rowsInRange : [latest]
     const periodStart = periodRows[0]
     const periodStartMs = parseDateOnly(periodStart.date).getTime()
@@ -754,9 +995,116 @@ export default function StatistiquesPage() {
     }
 
     const postsInRange = posts.filter(
-      (post) => new Date(post.timestamp).getTime() >= periodStartMs
+      (post) => new Date(post.timestamp).getTime() >= requestedWindowStartMs
     ).length
     const followersPerPost = postsInRange > 0 ? followersDeltaPeriod / postsInRange : null
+
+    // Alerte de tendance: compare les 7 derniers jours aux 7 jours précédents
+    const row7dAgo = findRowOnOrBefore(rows, latestMs - 7 * DAY_MS)
+    const row14dAgo = findRowOnOrBefore(rows, latestMs - 14 * DAY_MS)
+
+    const last7Delta = row7dAgo ? latest.followers_count - row7dAgo.followers_count : null
+    const previous7Delta =
+      row7dAgo && row14dAgo ? row7dAgo.followers_count - row14dAgo.followers_count : null
+    const trendDeltaVsPrevWeek =
+      last7Delta !== null && previous7Delta !== null ? last7Delta - previous7Delta : null
+    const trendDeltaVsPrevWeekPct =
+      trendDeltaVsPrevWeek !== null && previous7Delta !== null && previous7Delta !== 0
+        ? trendDeltaVsPrevWeek / Math.abs(previous7Delta)
+        : null
+
+    let growthAlertLevel: 'critical' | 'warning' | 'good' | 'neutral' = 'neutral'
+    let growthAlertTitle = 'Tendance stable'
+    let growthAlertMessage = 'Pas assez de recul pour conclure une accélération ou un ralentissement.'
+
+    if (last7Delta !== null && previous7Delta !== null) {
+      if (last7Delta <= 0 && previous7Delta > 0) {
+        growthAlertLevel = 'critical'
+        growthAlertTitle = 'Alerte traction'
+        growthAlertMessage =
+          'Les 7 derniers jours sont en baisse alors que la semaine précédente était positive.'
+      } else if (previous7Delta > 0 && last7Delta < previous7Delta * 0.7) {
+        growthAlertLevel = 'warning'
+        growthAlertTitle = 'Ralentissement détecté'
+        growthAlertMessage =
+          'La croissance abonnés des 7 derniers jours est nettement en dessous de la semaine précédente.'
+      } else if (previous7Delta > 0 && last7Delta >= previous7Delta * 1.2) {
+        growthAlertLevel = 'good'
+        growthAlertTitle = 'Momentum positif'
+        growthAlertMessage =
+          'La croissance abonnés accélère par rapport à la semaine précédente.'
+      } else {
+        growthAlertLevel = 'neutral'
+        growthAlertTitle = 'Tendance stable'
+        growthAlertMessage =
+          'Le rythme de croissance abonnés est globalement similaire à la semaine précédente.'
+      }
+    } else if (last7Delta !== null) {
+      if (last7Delta < 0) {
+        growthAlertLevel = 'warning'
+        growthAlertTitle = 'Baisse récente'
+        growthAlertMessage = 'Les 7 derniers jours montrent une baisse du nombre d’abonnés.'
+      } else {
+        growthAlertLevel = 'neutral'
+        growthAlertTitle = 'Signal partiel'
+        growthAlertMessage = 'Historique encore court: il faut au moins 14 jours pour comparer 2 semaines.'
+      }
+    }
+
+    // Corrélation posts -> croissance abonnés (J+0 et J+1)
+    const postsByDate = posts.reduce<Record<string, number>>((acc, post) => {
+      const dateKey = new Date(post.timestamp).toISOString().slice(0, 10)
+      acc[dateKey] = (acc[dateKey] || 0) + 1
+      return acc
+    }, {})
+
+    const yDeltas: number[] = []
+    const xSameDay: number[] = []
+    const xLag1: number[] = []
+    const withPostDeltas: number[] = []
+    const withoutPostDeltas: number[] = []
+
+    for (let i = 1; i < rows.length; i += 1) {
+      const prev = rows[i - 1]
+      const curr = rows[i]
+      const delta = curr.followers_count - prev.followers_count
+      const sameDayPosts = postsByDate[curr.date] || 0
+      const lag1Posts = postsByDate[prev.date] || 0
+
+      yDeltas.push(delta)
+      xSameDay.push(sameDayPosts)
+      xLag1.push(lag1Posts)
+
+      if (lag1Posts > 0) withPostDeltas.push(delta)
+      else withoutPostDeltas.push(delta)
+    }
+
+    const corrSameDay = computePearson(xSameDay, yDeltas)
+    const corrLag1 = computePearson(xLag1, yDeltas)
+    const selectedCorrelation =
+      corrLag1 !== null && (corrSameDay === null || Math.abs(corrLag1) >= Math.abs(corrSameDay))
+        ? { value: corrLag1, model: 'J+1' as const }
+        : corrSameDay !== null
+          ? { value: corrSameDay, model: 'J+0' as const }
+          : null
+
+    let correlationLabel = 'Signal insuffisant'
+    if (selectedCorrelation) {
+      const abs = Math.abs(selectedCorrelation.value)
+      if (abs >= 0.6) correlationLabel = 'Corrélation forte'
+      else if (abs >= 0.35) correlationLabel = 'Corrélation modérée'
+      else if (abs >= 0.2) correlationLabel = 'Corrélation légère'
+      else correlationLabel = 'Corrélation faible'
+    }
+
+    const avgGainWithPost =
+      withPostDeltas.length > 0
+        ? withPostDeltas.reduce((sum, value) => sum + value, 0) / withPostDeltas.length
+        : null
+    const avgGainWithoutPost =
+      withoutPostDeltas.length > 0
+        ? withoutPostDeltas.reduce((sum, value) => sum + value, 0) / withoutPostDeltas.length
+        : null
 
     const periodLabel =
       accountRange === 'all'
@@ -766,6 +1114,10 @@ export default function StatistiquesPage() {
           : accountRange === '30d'
             ? '30 jours'
             : '90 jours'
+    const periodDisplayLabel =
+      requestedRangeDays !== null && daysTracked < requestedRangeDays
+        ? `${daysTracked} jour${daysTracked > 1 ? 's' : ''} observé${daysTracked > 1 ? 's' : ''} (fenêtre ${periodLabel})`
+        : periodLabel
 
     return {
       currentFollowers: latest.followers_count,
@@ -773,11 +1125,14 @@ export default function StatistiquesPage() {
       currentMedia: latest.media_count,
       latestDate: latest.date,
       periodLabel,
+      periodDisplayLabel,
       periodStartDate: periodStart.date,
+      windowStartDate: toDateOnlyFromMs(requestedWindowStartMs),
       followersDeltaPeriod,
       followsDeltaPeriod,
       mediaDeltaPeriod,
       daysTracked,
+      requestedRangeDays,
       avgFollowersPerDay,
       followersVsLastMonth,
       followersSinceLastPost,
@@ -787,7 +1142,24 @@ export default function StatistiquesPage() {
       delta7,
       delta30,
       delta90,
+      growthAlertLevel,
+      growthAlertTitle,
+      growthAlertMessage,
+      last7Delta,
+      previous7Delta,
+      trendDeltaVsPrevWeek,
+      trendDeltaVsPrevWeekPct,
+      correlationModel: selectedCorrelation?.model || null,
+      correlationValue: selectedCorrelation?.value || null,
+      correlationLabel,
+      avgGainWithPost,
+      avgGainWithoutPost,
+      correlationSampleSize: yDeltas.length,
       followersSeries: periodRows.map((row) => row.followers_count),
+      followersDates: periodRows.map((row) => row.date),
+      snapshotsInWindow: periodRows.length,
+      chartWindowStartMs: requestedWindowStartMs,
+      chartWindowEndMs: latestMs,
     }
   }, [accountHistory, accountRange, posts])
 
@@ -893,7 +1265,7 @@ export default function StatistiquesPage() {
                       accountInsights.followersDeltaPeriod >= 0 ? 'text-emerald-600' : 'text-red-600'
                     }`}
                   >
-                    {toSignedText(accountInsights.followersDeltaPeriod)} sur {accountInsights.periodLabel}
+                    {toSignedText(accountInsights.followersDeltaPeriod)} sur {accountInsights.periodDisplayLabel}
                   </p>
                   <div className="mt-2 flex flex-wrap gap-2">
                     <VariationBadge value={accountInsights.delta7} period="7j" />
@@ -937,10 +1309,17 @@ export default function StatistiquesPage() {
                   <p className="text-sm font-semibold">
                     Évolution abonnés ({accountInsights.periodLabel})
                   </p>
-                  <FollowersSparkline values={accountInsights.followersSeries} />
+                  <FollowersSparkline
+                    values={accountInsights.followersSeries}
+                    dates={accountInsights.followersDates}
+                    domainStartMs={accountInsights.chartWindowStartMs}
+                    domainEndMs={accountInsights.chartWindowEndMs}
+                  />
                   <p className="text-xs text-muted-foreground">
-                    Du {parseDateOnly(accountInsights.periodStartDate).toLocaleDateString('fr-FR')} au{' '}
-                    {parseDateOnly(accountInsights.latestDate).toLocaleDateString('fr-FR')}
+                    Fenêtre: {parseDateOnly(accountInsights.windowStartDate).toLocaleDateString('fr-FR')} au{' '}
+                    {parseDateOnly(accountInsights.latestDate).toLocaleDateString('fr-FR')} ·{' '}
+                    {accountInsights.snapshotsInWindow} snapshot
+                    {accountInsights.snapshotsInWindow > 1 ? 's' : ''}
                   </p>
                 </div>
 
@@ -952,7 +1331,7 @@ export default function StatistiquesPage() {
                   </p>
                   <p className="text-sm text-muted-foreground">
                     {toSignedText(accountInsights.followersDeltaPeriod)} abonnés gagnés sur{' '}
-                    {accountInsights.periodLabel}.
+                    {accountInsights.periodDisplayLabel}.
                   </p>
                   <p className="text-sm text-muted-foreground">
                     {accountInsights.postsInRange} publication(s) sur la période.
@@ -961,6 +1340,48 @@ export default function StatistiquesPage() {
                     {toSignedText(accountInsights.followsDeltaPeriod)} abonnements et{' '}
                     {toSignedText(accountInsights.mediaDeltaPeriod)} nouveaux contenus.
                   </p>
+                  <div
+                    className={`mt-2 rounded-md border px-3 py-2 text-xs ${
+                      accountInsights.growthAlertLevel === 'critical'
+                        ? 'border-red-200 bg-red-50 text-red-700'
+                        : accountInsights.growthAlertLevel === 'warning'
+                          ? 'border-amber-200 bg-amber-50 text-amber-700'
+                          : accountInsights.growthAlertLevel === 'good'
+                            ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
+                            : 'border-gray-200 bg-gray-50 text-gray-700'
+                    }`}
+                  >
+                    <p className="font-semibold">{accountInsights.growthAlertTitle}</p>
+                    <p>{accountInsights.growthAlertMessage}</p>
+                    <p className="mt-1">
+                      7j actuels: {toSignedText(accountInsights.last7Delta)} | 7j précédents:{' '}
+                      {toSignedText(accountInsights.previous7Delta)} (
+                      {toPercentText(accountInsights.trendDeltaVsPrevWeekPct)})
+                    </p>
+                  </div>
+
+                  <div className="mt-2 rounded-md border border-sky-200 bg-sky-50 px-3 py-2 text-xs text-sky-800">
+                    <p className="font-semibold">Corrélation Posts → Abonnés</p>
+                    <p>
+                      {accountInsights.correlationLabel}
+                      {accountInsights.correlationValue !== null && (
+                        <>
+                          {' '}
+                          (r={accountInsights.correlationValue.toFixed(2)} - modèle{' '}
+                          {accountInsights.correlationModel})
+                        </>
+                      )}
+                    </p>
+                    <p className="mt-1">
+                      Après publication: {toSignedText(accountInsights.avgGainWithPost, 1)} / jour
+                    </p>
+                    <p>
+                      Sans publication: {toSignedText(accountInsights.avgGainWithoutPost, 1)} / jour
+                    </p>
+                    <p className="mt-1 text-[11px] text-sky-700/80">
+                      Échantillon: {accountInsights.correlationSampleSize} jours.
+                    </p>
+                  </div>
                 </div>
               </div>
             </div>
